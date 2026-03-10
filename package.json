@@ -1,0 +1,38 @@
+{
+  "name": "MoneyMan",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "nuxt build",
+    "dev": "cross-env NODE_OPTIONS=\"--dns-result-order=ipv4first --max-http-header-size=65536\" nuxt dev",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare",
+    "db:seed": "npx tsx prisma/seed.ts",
+    "db:migrate": "prisma migrate deploy",
+    "db:migrate:dev": "prisma migrate dev",
+    "db:generate": "prisma generate"
+  },
+  "dependencies": {
+    "@prisma/adapter-pg": "^7.4.2",
+    "@tabler/icons-vue": "^3.40.0",
+    "@tailwindcss/vite": "^4.2.1",
+    "bcryptjs": "^3.0.3",
+    "dotenv": "^17.3.1",
+    "nuxt": "^3.21.1",
+    "pg": "^8.20.0",
+    "tailwindcss": "^4.2.1",
+    "vue": "^3.5.29",
+    "vue-router": "^4.6.4",
+    "yahoo-finance2": "^3.13.2"
+  },
+  "devDependencies": {
+    "@prisma/client": "^7.4.2",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/node": "^25.3.5",
+    "cross-env": "^10.1.0",
+    "daisyui": "^5.5.19",
+    "prisma": "^7.4.2",
+    "tsx": "^4.21.0"
+  }
+}

@@ -1,0 +1,197 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider  = "postgresql"
+}
+
+// ============ Models ============
+
+model Account {
+  id        String   @id @default(cuid())
+  name      String
+  type      AccountType @default(CASH)
+  balance   Decimal  @default(0) @db.Decimal(15, 2)
+  currency  String   @default("IDR")
+  icon      String?
+  color     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  transactions Transaction[]
+  transfersIn  Transaction[] @relation("TransferTo")
+
+  @@map("accounts")
+}
+
+model Category {
+  id        String       @id @default(cuid())
+  name      String
+  type      TransactionType
+  icon      String?
+  color     String?
+  parentId  String?
+  parent    Category?    @relation("CategoryChildren", fields: [parentId], references: [id])
+  children  Category[]   @relation("CategoryChildren")
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  transactions Transaction[]
+  budgets      Budget[]
+
+  @@map("categories")
+}
+
+model Transaction {
+  id          String          @id @default(cuid())
+  amount      Decimal         @db.Decimal(15, 2)
+  type        TransactionType
+  description String?
+  date        DateTime        @default(now())
+  
+  accountId   String
+  account     Account         @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  categoryId  String
+  category    Category        @relation(fields: [categoryId], references: [id])
+
+  transferToId   String?
+  transferTo     Account?     @relation("TransferTo", fields: [transferToId], references: [id])
+
+  tags        Tag[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("transactions")
+}
+
+model Tag {
+  id           String        @id @default(cuid())
+  name         String        @unique
+  transactions Transaction[]
+
+  @@map("tags")
+}
+
+model Budget {
+  id         String       @id @default(cuid())
+  name       String
+  amount     Decimal      @db.Decimal(15, 2)
+  spent      Decimal      @default(0) @db.Decimal(15, 2)
+  period     BudgetPeriod @default(MONTHLY)
+  startDate  DateTime
+  endDate    DateTime?
+  categoryId String?
+  category   Category?    @relation(fields: [categoryId], references: [id])
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  @@map("budgets")
+}
+
+model Investment {
+  id            String         @id @default(cuid())
+  name          String
+  type          InvestmentType @default(OTHER)
+  initialAmount Decimal        @db.Decimal(15, 2)
+  currentValue  Decimal        @db.Decimal(15, 2)
+  ticker        String?
+  quantity      Decimal?       @db.Decimal(15, 6)
+  platform      String?
+  notes         String?
+  startDate     DateTime       @default(now())
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@map("investments")
+}
+
+model Debt {
+  id            String   @id @default(cuid())
+  name          String
+  type          DebtType @default(PAYABLE)
+  totalAmount   Decimal  @db.Decimal(15, 2)
+  paidAmount    Decimal  @default(0) @db.Decimal(15, 2)
+  counterparty  String?
+  notes         String?
+  dueDate       DateTime?
+  durationMonths Int?     // Tenor dalam bulan
+  interestRate  Decimal?  @db.Decimal(5, 2) // Bunga per tahun (%)
+  installments  DebtInstallment[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("debts")
+}
+
+model DebtInstallment {
+  id            String   @id @default(cuid())
+  debtId        String
+  debt          Debt     @relation(fields: [debtId], references: [id], onDelete: Cascade)
+  sequence      Int      // Urutan cicilan (misal 1 dari 24)
+  amount        Decimal  @db.Decimal(15, 2)
+  dueDate       DateTime
+  isPaid        Boolean  @default(false)
+  paidAt        DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("debt_installments")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  password  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("users")
+}
+
+// ============ Enums ============
+
+enum AccountType {
+  CASH
+  BANK
+  EWALLET
+  CREDIT_CARD
+  INVESTMENT
+  OTHER
+}
+
+enum TransactionType {
+  INCOME
+  EXPENSE
+  TRANSFER
+}
+
+enum BudgetPeriod {
+  DAILY
+  WEEKLY
+  MONTHLY
+  YEARLY
+}
+
+enum InvestmentType {
+  STOCK
+  MUTUAL_FUND
+  CRYPTO
+  GOLD
+  DEPOSIT
+  BOND
+  PROPERTY
+  OTHER
+}
+
+enum DebtType {
+  PAYABLE
+  RECEIVABLE
+}
