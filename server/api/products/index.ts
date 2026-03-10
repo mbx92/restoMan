@@ -1,13 +1,14 @@
 import prisma from '../../utils/prisma'
 
 export default defineEventHandler(async (event) => {
+  const session = await requireAuth(event)
   const method = event.method
   const query = getQuery(event)
 
   // GET — list products
   if (method === 'GET') {
-    const where: any = {}
-    if (query.active !== 'false') where.isActive = true
+    const where: any = { tenantId: session.tenantId }
+    if (query.active !== 'all') where.isActive = true
     if (query.categoryId) where.categoryId = query.categoryId as string
     if (query.search) {
       where.OR = [
@@ -19,16 +20,22 @@ export default defineEventHandler(async (event) => {
     return prisma.product.findMany({
       where,
       orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
-      include: { category: true },
+      include: {
+        category: true,
+        variantGroups: {
+          include: { options: { orderBy: { sortOrder: 'asc' } } },
+          orderBy: { sortOrder: 'asc' },
+        },
+      },
     })
   }
 
   // POST — create product
   if (method === 'POST') {
+    await requirePermission(event, 'products.manage')
     const body = await readBody(event)
-    if (!body.name || !body.categoryId) {
-      throw createError({ statusCode: 400, statusMessage: 'Nama dan kategori wajib diisi' })
-    }
+    if (!body.name || !body.categoryId) throwError('PRD_NAME_REQUIRED')
+
     return prisma.product.create({
       data: {
         name: body.name,
@@ -41,6 +48,7 @@ export default defineEventHandler(async (event) => {
         trackStock: body.trackStock ?? false,
         sortOrder: body.sortOrder ?? 0,
         categoryId: body.categoryId,
+        tenantId: session.tenantId,
       },
       include: { category: true },
     })

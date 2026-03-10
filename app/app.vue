@@ -2,6 +2,7 @@
   <NuxtLayout>
     <NuxtPage />
   </NuxtLayout>
+  <PinLock />
 </template>
 
 <script setup lang="ts">

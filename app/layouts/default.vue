@@ -21,15 +21,37 @@
             </div>
           </div>
           <div class="flex-none gap-2">
+            <!-- Location Selector -->
+            <div v-if="auth.user.value?.locations && auth.user.value.locations.length > 1" class="dropdown dropdown-end">
+              <div tabindex="0" role="button" class="btn btn-ghost btn-sm gap-1">
+                <IconMapPin class="w-4 h-4" />
+                <span class="text-xs">{{ auth.currentLocation.value?.name || 'Pilih Lokasi' }}</span>
+              </div>
+              <ul tabindex="-1" class="dropdown-content menu bg-base-100 rounded-box z-50 w-52 p-2 shadow-lg border border-base-300">
+                <li v-for="loc in auth.user.value.locations" :key="loc.id">
+                  <a :class="{ 'active': loc.id === auth.currentLocationId.value }"
+                     @click="auth.switchLocation(loc.id)">
+                    {{ loc.name }}
+                  </a>
+                </li>
+              </ul>
+            </div>
+
+            <!-- User Role Badge -->
+            <span class="badge badge-sm badge-soft badge-info">{{ auth.user.value?.role?.name }}</span>
+
+            <!-- User Menu -->
             <div class="dropdown dropdown-end">
               <div tabindex="0" role="button" class="btn btn-ghost btn-circle avatar avatar-placeholder">
                 <div class="bg-primary text-primary-content w-9 rounded-full flex items-center justify-center">
-                  <span class="text-sm font-bold">U</span>
+                  <span class="text-sm font-bold">{{ userInitial }}</span>
                 </div>
               </div>
               <ul tabindex="-1" class="dropdown-content menu bg-base-100 rounded-box z-50 w-52 p-2 shadow-lg border border-base-300">
                 <li><a><IconUser class="w-4 h-4" /> Profil</a></li>
-                <li><a><IconSettings class="w-4 h-4" /> Pengaturan</a></li>
+                <li v-if="auth.hasPermission('settings.view')">
+                  <NuxtLink to="/settings"><IconSettings class="w-4 h-4" /> Pengaturan</NuxtLink>
+                </li>
                 <li class="border-t border-base-300 mt-1 pt-1">
                   <a class="text-error" @click="auth.logout()"><IconLogout class="w-4 h-4" /> Keluar</a>
                 </li>
@@ -61,7 +83,7 @@
               </div>
               <div>
                 <h1 class="text-lg font-bold tracking-tight">RestoMan</h1>
-                <p class="text-xs text-primary-content/60">Point of Sale</p>
+                <p class="text-xs text-primary-content/60">{{ auth.user.value?.tenant?.name || 'Point of Sale' }}</p>
               </div>
             </NuxtLink>
           </div>
@@ -88,6 +110,12 @@
                   <IconReceipt class="w-5 h-5 shrink-0" /> Riwayat Order
                 </NuxtLink>
               </li>
+              <li>
+                <NuxtLink to="/shifts" active-class="bg-white/15 text-white font-semibold"
+                  class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-base text-primary-content/75 hover:bg-white/10 hover:text-white transition-colors w-full">
+                  <IconCashRegister class="w-5 h-5 shrink-0" /> Shift Kasir
+                </NuxtLink>
+              </li>
             </ul>
 
             <p class="px-3 mb-1.5 mt-4 text-xs font-semibold uppercase tracking-wider text-primary-content/40">Manajemen</p>
@@ -110,7 +138,43 @@
                   <IconReportMoney class="w-5 h-5 shrink-0" /> Pengeluaran
                 </NuxtLink>
               </li>
+              <li>
+                <NuxtLink to="/inventory" active-class="bg-white/15 text-white font-semibold"
+                  class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-base text-primary-content/75 hover:bg-white/10 hover:text-white transition-colors w-full">
+                  <IconPackages class="w-5 h-5 shrink-0" /> Inventori
+                </NuxtLink>
+              </li>
+              <li>
+                <NuxtLink to="/reports" active-class="bg-white/15 text-white font-semibold"
+                  class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-base text-primary-content/75 hover:bg-white/10 hover:text-white transition-colors w-full">
+                  <IconChartBar class="w-5 h-5 shrink-0" /> Laporan
+                </NuxtLink>
+              </li>
             </ul>
+
+            <template v-if="auth.hasPermission('settings.view')">
+              <p class="px-3 mb-1.5 mt-4 text-xs font-semibold uppercase tracking-wider text-primary-content/40">Pengaturan</p>
+              <ul class="flex flex-col gap-0.5">
+                <li>
+                  <NuxtLink to="/settings" active-class="bg-white/15 text-white font-semibold"
+                    class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-base text-primary-content/75 hover:bg-white/10 hover:text-white transition-colors w-full">
+                    <IconSettings class="w-5 h-5 shrink-0" /> Pengaturan
+                  </NuxtLink>
+                </li>
+                <li>
+                  <NuxtLink to="/users" active-class="bg-white/15 text-white font-semibold"
+                    class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-base text-primary-content/75 hover:bg-white/10 hover:text-white transition-colors w-full">
+                    <IconUsers class="w-5 h-5 shrink-0" /> Pengguna
+                  </NuxtLink>
+                </li>
+                <li>
+                  <NuxtLink to="/tenant" active-class="bg-white/15 text-white font-semibold"
+                    class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-base text-primary-content/75 hover:bg-white/10 hover:text-white transition-colors w-full">
+                    <IconBuilding class="w-5 h-5 shrink-0" /> Tenant
+                  </NuxtLink>
+                </li>
+              </ul>
+            </template>
           </nav>
 
           <!-- Sidebar Footer -->
@@ -121,8 +185,11 @@
               </div>
               <div class="flex-1 min-w-0">
                 <p class="text-sm font-medium truncate">{{ auth.user.value?.name || 'User' }}</p>
-                <p class="text-xs text-primary-content/50 truncate">{{ auth.user.value?.email || '' }}</p>
+                <p class="text-xs text-primary-content/50 truncate">{{ auth.user.value?.role?.name }} — {{ auth.currentLocation.value?.name || '' }}</p>
               </div>
+              <button @click="auth.lockScreen()" class="btn btn-ghost btn-xs btn-circle text-primary-content/50 hover:text-white hover:bg-white/10" title="Kunci Layar">
+                <IconLock class="w-4 h-4" />
+              </button>
               <button @click="auth.logout()" class="btn btn-ghost btn-xs btn-circle text-primary-content/50 hover:text-white hover:bg-white/10" title="Keluar">
                 <IconLogout class="w-4 h-4" />
               </button>
@@ -137,8 +204,9 @@
 <script setup lang="ts">
 import {
   IconBuildingStore, IconLayoutDashboard, IconCash, IconReceipt,
-  IconPackage, IconCategory, IconReportMoney,
-  IconMenu2, IconUser, IconSettings, IconLogout,
+  IconPackage, IconCategory, IconReportMoney, IconCashRegister,
+  IconMenu2, IconUser, IconSettings, IconLogout, IconMapPin,
+  IconUsers, IconBuilding, IconPackages, IconChartBar, IconLock
 } from '@tabler/icons-vue'
 
 const route = useRoute()
@@ -147,14 +215,25 @@ const currentYear = new Date().getFullYear()
 
 onMounted(() => auth.fetchUser())
 
+const userInitial = computed(() => {
+  const name = auth.user.value?.name || 'U'
+  return name.charAt(0).toUpperCase()
+})
+
 const pageTitle = computed(() => {
   const titles: Record<string, string> = {
     '/': 'Dashboard',
     '/pos': 'Kasir (POS)',
     '/orders': 'Riwayat Order',
+    '/shifts': 'Shift Kasir',
     '/products': 'Produk',
     '/categories': 'Kategori',
     '/expenses': 'Pengeluaran',
+    '/settings': 'Pengaturan',
+    '/users': 'Pengguna',
+    '/tenant': 'Tenant',
+    '/inventory': 'Inventori',
+    '/reports': 'Laporan',
   }
   return titles[route.path] || 'Halaman'
 })

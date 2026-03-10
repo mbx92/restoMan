@@ -13,12 +13,12 @@
   --color-base-300: oklch(95% 0.005 80);
   --color-base-content: oklch(17% 0.005 50);
 
-  /* Primary — dark forest green */
-  --color-primary: oklch(30.6% 0.084 153);
+  /* Primary — Light Blue (VS Code style) */
+  --color-primary: oklch(55% 0.15 250);
   --color-primary-content: oklch(100% 0 0);
 
-  /* Secondary — golden yellow */
-  --color-secondary: oklch(66.6% 0.162 80);
+  /* Secondary — Gray */
+  --color-secondary: oklch(65% 0.01 250);
   --color-secondary-content: oklch(100% 0 0);
 
   /* Accent — deep green */

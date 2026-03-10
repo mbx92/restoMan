@@ -1,21 +1,23 @@
 import prisma from '../../utils/prisma'
 
 export default defineEventHandler(async (event) => {
+  const session = await requireAuth(event)
   const id = getRouterParam(event, 'id')!
   const method = event.method
 
   // GET — single product
   if (method === 'GET') {
-    const product = await prisma.product.findUnique({
-      where: { id },
+    const product = await prisma.product.findFirst({
+      where: { id, tenantId: session.tenantId },
       include: { category: true },
     })
-    if (!product) throw createError({ statusCode: 404, statusMessage: 'Produk tidak ditemukan' })
+    if (!product) throwError('PRD_NOT_FOUND')
     return product
   }
 
   // PUT — update product
   if (method === 'PUT') {
+    await requirePermission(event, 'products.manage')
     const body = await readBody(event)
     return prisma.product.update({
       where: { id },
@@ -38,6 +40,7 @@ export default defineEventHandler(async (event) => {
 
   // DELETE — soft delete
   if (method === 'DELETE') {
+    await requirePermission(event, 'products.manage')
     return prisma.product.update({
       where: { id },
       data: { isActive: false },

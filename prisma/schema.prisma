@@ -1,5 +1,5 @@
 // RestoMan POS — Prisma Schema
-// Point of Sale system for restaurant management
+// Multi-tenant Point of Sale system for restaurant management
 
 generator client {
   provider = "prisma-client"
@@ -10,21 +10,203 @@ datasource db {
   provider = "postgresql"
 }
 
-// ============ Auth & Users ============
+// ============ Multi-Tenancy ============
+
+model Tenant {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  locations  Location[]
+  users      User[]
+  roles      Role[]
+  categories Category[]
+  products   Product[]
+
+  @@map("tenants")
+}
+
+model Location {
+  id        String   @id @default(cuid())
+  name      String
+  address   String?
+  phone     String?
+  isActive  Boolean  @default(true)
+
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+
+  settings  Setting[]
+  shifts    CashRegisterShift[]
+  orders    Order[]
+  expenses  Expense[]
+  auditLogs AuditLog[]
+  sequences Sequence[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("locations")
+}
+
+// ============ Auth & Authorization ============
 
 model User {
   id        String   @id @default(cuid())
   name      String
   email     String   @unique
   password  String
-  role      UserRole @default(CASHIER)
+  pin       String?
   isActive  Boolean  @default(true)
+
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+
+  roleId    String
+  role      Role     @relation(fields: [roleId], references: [id])
+
+  orders    Order[]
+  shifts    CashRegisterShift[]
+  auditLogs AuditLog[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  orders    Order[]
-
   @@map("users")
+}
+
+model Role {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  isSystem    Boolean  @default(false)
+
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+
+  permissions RolePermission[]
+  users       User[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([tenantId, name])
+  @@map("roles")
+}
+
+model Permission {
+  id          String           @id @default(cuid())
+  code        String           @unique
+  name        String
+  module      String
+  description String?
+
+  roles       RolePermission[]
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  roleId       String
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  permissionId String
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+// ============ Settings ============
+
+model Setting {
+  id         String   @id @default(cuid())
+  locationId String
+  location   Location @relation(fields: [locationId], references: [id])
+
+  key        String
+  value      String   // JSON for complex values
+  group      String   // tax, service, payment, prefix, printer, order
+
+  @@unique([locationId, key])
+  @@map("settings")
+}
+
+// ============ Sequence / Counter ============
+
+model Sequence {
+  id         String @id @default(cuid())
+  locationId String
+  location   Location @relation(fields: [locationId], references: [id])
+
+  prefix     String  // ORD, SFT, SPL, EXP
+  date       String  // YYYYMMDD
+  lastNumber Int     @default(0)
+
+  @@unique([locationId, prefix, date])
+  @@map("sequences")
+}
+
+// ============ Audit Logging ============
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  action     String
+  errorCode  String?
+  module     String
+  level      LogLevel @default(INFO)
+  message    String
+  metadata   Json?
+
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id])
+
+  locationId String?
+  location   Location? @relation(fields: [locationId], references: [id])
+
+  ipAddress  String?
+  userAgent  String?
+
+  createdAt  DateTime @default(now())
+
+  @@index([locationId, createdAt])
+  @@index([module, action])
+  @@map("audit_logs")
+}
+
+// ============ Cash Register / Shift ============
+
+model CashRegisterShift {
+  id              String      @id @default(cuid())
+  shiftNumber     String      @unique
+  status          ShiftStatus @default(OPEN)
+
+  openedAt        DateTime    @default(now())
+  closedAt        DateTime?
+
+  openingAmount   Decimal     @db.Decimal(15, 2)
+  closingAmount   Decimal?    @db.Decimal(15, 2)
+  expectedAmount  Decimal?    @db.Decimal(15, 2)
+  difference      Decimal?    @db.Decimal(15, 2)
+
+  notes           String?
+
+  userId          String
+  user            User        @relation(fields: [userId], references: [id])
+
+  locationId      String
+  location        Location    @relation(fields: [locationId], references: [id])
+
+  orders          Order[]
+
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@index([locationId, status])
+  @@map("cash_register_shifts")
 }
 
 // ============ Products ============
@@ -36,10 +218,14 @@ model Category {
   color     String?
   sortOrder Int       @default(0)
   isActive  Boolean   @default(true)
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+
+  tenantId  String
+  tenant    Tenant    @relation(fields: [tenantId], references: [id])
 
   products  Product[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
   @@map("categories")
 }
@@ -57,56 +243,127 @@ model Product {
   isActive    Boolean  @default(true)
   sortOrder   Int      @default(0)
 
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+
   categoryId  String
   category    Category @relation(fields: [categoryId], references: [id])
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  orderItems  OrderItem[]
+  orderItems       OrderItem[]
+  variantGroups    VariantGroup[]
+  stockAdjustments StockAdjustment[]
 
   @@map("products")
+}
+
+model VariantGroup {
+  id        String   @id @default(cuid())
+  name      String   // e.g. "Ukuran", "Topping"
+  required  Boolean  @default(false)
+  multiple  Boolean  @default(false) // allow multi-select
+  sortOrder Int      @default(0)
+
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  options   VariantOption[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("variant_groups")
+}
+
+model VariantOption {
+  id              String   @id @default(cuid())
+  name            String   // e.g. "Large", "Extra Cheese"
+  additionalPrice Decimal  @default(0) @db.Decimal(15, 2)
+  isActive        Boolean  @default(true)
+  sortOrder       Int      @default(0)
+
+  groupId         String
+  group           VariantGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("variant_options")
+}
+
+// ============ Inventory / Stock Adjustments ============
+
+model StockAdjustment {
+  id         String   @id @default(cuid())
+  type       StockAdjustmentType
+  quantity   Int
+  reason     String?
+  reference  String?  // e.g. order number
+
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id])
+
+  userId     String?
+
+  createdAt  DateTime @default(now())
+
+  @@index([productId, createdAt])
+  @@map("stock_adjustments")
 }
 
 // ============ Orders / Transactions ============
 
 model Order {
-  id            String      @id @default(cuid())
-  orderNumber   String      @unique
-  status        OrderStatus @default(PENDING)
-  orderType     OrderType   @default(DINE_IN)
-  tableNumber   String?
+  id              String        @id @default(cuid())
+  orderNumber     String        @unique
+  status          OrderStatus   @default(PENDING)
+  orderType       OrderType     @default(DINE_IN)
+  tableNumber     String?
 
-  subtotal      Decimal     @db.Decimal(15, 2)
-  discountAmount Decimal    @default(0) @db.Decimal(15, 2)
-  taxAmount     Decimal     @default(0) @db.Decimal(15, 2)
-  totalAmount   Decimal     @db.Decimal(15, 2)
+  subtotal        Decimal       @db.Decimal(15, 2)
+  discountAmount  Decimal       @default(0) @db.Decimal(15, 2)
+  taxAmount       Decimal       @default(0) @db.Decimal(15, 2)
+  serviceCharge   Decimal       @default(0) @db.Decimal(15, 2)
+  totalAmount     Decimal       @db.Decimal(15, 2)
 
-  paymentMethod PaymentMethod?
-  paidAmount    Decimal?    @db.Decimal(15, 2)
-  changeAmount  Decimal?    @db.Decimal(15, 2)
-  paidAt        DateTime?
+  paymentMethod   PaymentMethod?
+  paidAmount      Decimal?      @db.Decimal(15, 2)
+  changeAmount    Decimal?      @db.Decimal(15, 2)
+  paidAt          DateTime?
 
-  notes         String?
-  customerName  String?
+  notes           String?
+  customerName    String?
+  customerCount   Int?
 
-  cashierId     String
-  cashier       User        @relation(fields: [cashierId], references: [id])
+  cashierId       String
+  cashier         User          @relation(fields: [cashierId], references: [id])
 
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+  locationId      String
+  location        Location      @relation(fields: [locationId], references: [id])
 
-  items         OrderItem[]
+  shiftId         String?
+  shift           CashRegisterShift? @relation(fields: [shiftId], references: [id])
 
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  items           OrderItem[]
+  splitBills      SplitBill[]
+  tableTransfers  TableTransfer[]
+
+  @@index([locationId, createdAt])
   @@map("orders")
 }
 
 model OrderItem {
-  id         String  @id @default(cuid())
-  quantity   Int
-  unitPrice  Decimal @db.Decimal(15, 2)
-  subtotal   Decimal @db.Decimal(15, 2)
-  notes      String?
+  id                String  @id @default(cuid())
+  quantity          Int
+  unitPrice         Decimal @db.Decimal(15, 2)
+  subtotal          Decimal @db.Decimal(15, 2)
+  notes             String?
+  variantSelections Json?   // stores [{groupName, optionName, additionalPrice}]
 
   orderId    String
   order      Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
@@ -114,9 +371,65 @@ model OrderItem {
   productId  String
   product    Product @relation(fields: [productId], references: [id])
 
+  splitBillItems SplitBillItem[]
+
   createdAt  DateTime @default(now())
 
   @@map("order_items")
+}
+
+// ============ Split Bill ============
+
+model SplitBill {
+  id            String        @id @default(cuid())
+  billNumber    String        @unique
+  splitType     SplitType
+  amount        Decimal       @db.Decimal(15, 2)
+
+  paymentMethod PaymentMethod?
+  paidAmount    Decimal?      @db.Decimal(15, 2)
+  changeAmount  Decimal?      @db.Decimal(15, 2)
+  isPaid        Boolean       @default(false)
+  paidAt        DateTime?
+  label         String?
+
+  orderId       String
+  order         Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  items         SplitBillItem[]
+
+  createdAt     DateTime      @default(now())
+
+  @@map("split_bills")
+}
+
+model SplitBillItem {
+  id          String    @id @default(cuid())
+
+  splitBillId String
+  splitBill   SplitBill @relation(fields: [splitBillId], references: [id], onDelete: Cascade)
+
+  orderItemId String
+  orderItem   OrderItem @relation(fields: [orderItemId], references: [id])
+
+  quantity    Int
+  amount      Decimal   @db.Decimal(15, 2)
+
+  @@map("split_bill_items")
+}
+
+// ============ Table Transfer ============
+
+model TableTransfer {
+  id            String   @id @default(cuid())
+  orderId       String
+  order         Order    @relation(fields: [orderId], references: [id])
+
+  fromTable     String
+  toTable       String
+  transferredAt DateTime @default(now())
+
+  @@map("table_transfers")
 }
 
 // ============ Expenses ============
@@ -127,6 +440,10 @@ model Expense {
   amount      Decimal  @db.Decimal(15, 2)
   category    String?
   date        DateTime @default(now())
+
+  locationId  String
+  location    Location @relation(fields: [locationId], references: [id])
+
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -135,9 +452,16 @@ model Expense {
 
 // ============ Enums ============
 
-enum UserRole {
-  ADMIN
-  CASHIER
+enum LogLevel {
+  DEBUG
+  INFO
+  WARN
+  ERROR
+}
+
+enum ShiftStatus {
+  OPEN
+  CLOSED
 }
 
 enum OrderStatus {
@@ -157,4 +481,17 @@ enum PaymentMethod {
   CREDIT_CARD
   EWALLET
   QRIS
+}
+
+enum SplitType {
+  EQUAL
+  BY_ITEM
+}
+
+enum StockAdjustmentType {
+  IN
+  OUT
+  ADJUSTMENT
+  ORDER_DEDUCTION
+  ORDER_RETURN
 }

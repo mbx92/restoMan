@@ -1,51 +1,52 @@
 <template>
-  <div class="min-h-screen bg-base-200 flex" data-theme="moneyman">
+  <div class="min-h-screen bg-base-200 flex">
     <!-- Left Panel - Branding -->
     <div class="hidden lg:flex lg:w-[45%] bg-primary relative overflow-hidden">
-      <div class="absolute inset-0">
-        <div class="absolute -top-24 -left-24 w-96 h-96 bg-secondary/15 rounded-full"></div>
-        <div class="absolute bottom-0 right-0 w-[500px] h-[500px] bg-accent/10 rounded-full translate-x-1/4 translate-y-1/4"></div>
-        <div class="absolute top-1/2 left-1/3 w-48 h-48 bg-secondary/10 rounded-full"></div>
+      <div class="absolute inset-0 text-white/10 pointer-events-none flex items-center justify-center">
+        <!-- Decorative Food Icons replacing the circles -->
+        <IconPizza class="absolute -top-20 -left-10 w-[400px] h-[400px] -rotate-12" />
+        <IconIceCream class="absolute bottom-0 right-0 w-[500px] h-[500px] translate-x-1/4 translate-y-1/4 rotate-12" />
+        <IconCoffee class="absolute top-1/2 left-1/3 w-[250px] h-[250px] -rotate-45" />
       </div>
       <div class="relative z-10 flex flex-col justify-between p-12 w-full">
         <div class="flex items-center gap-3">
-          <div class="bg-secondary rounded-lg p-2.5">
-            <IconWallet class="w-7 h-7 text-white" />
+          <div class="bg-secondary text-primary-content tracking-tight rounded-lg p-2.5">
+            <IconChefHat class="w-7 h-7 text-white" />
           </div>
-          <span class="text-xl font-bold text-white tracking-tight">MoneyMan</span>
+          <span class="text-xl font-bold text-white tracking-tight">RestoMan</span>
         </div>
 
         <div class="max-w-sm">
           <h1 class="text-4xl font-bold text-white leading-tight mb-4">
-            Kelola Keuanganmu <br/>
-            <span class="text-secondary">Dengan Cerdas.</span>
+            Kelola Restoranmu <br/>
+            <span class="text-secondary text-white/90">Dengan Cerdas.</span>
           </h1>
-          <p class="text-primary-content/70 leading-relaxed">
-            Platform management keuangan pribadi yang membantu kamu mencatat, menganalisis, dan merencanakan keuangan secara efektif.
+          <p class="text-primary-content/80 leading-relaxed">
+            Platform Point of Sale (POS) terbaik yang membantu kamu mencatat pesanan, menganalisis penjualan, dan mengelola menu secara efektif.
           </p>
         </div>
 
         <div class="grid grid-cols-3 gap-6">
           <div>
-            <div class="bg-white/10 rounded-lg p-3 w-fit mb-3">
-              <IconReportAnalytics class="w-5 h-5 text-secondary" />
+            <div class="bg-white/15 rounded-lg p-3 w-fit mb-3">
+              <IconChartBar class="w-5 h-5 text-secondary" />
             </div>
             <p class="text-sm font-medium text-white">Laporan Real-time</p>
-            <p class="text-xs text-primary-content/50 mt-1">Analisis keuangan otomatis</p>
+            <p class="text-xs text-primary-content/60 mt-1">Analisis penjualan otomatis</p>
           </div>
           <div>
-            <div class="bg-white/10 rounded-lg p-3 w-fit mb-3">
+            <div class="bg-white/15 rounded-lg p-3 w-fit mb-3">
               <IconShieldCheck class="w-5 h-5 text-secondary" />
             </div>
             <p class="text-sm font-medium text-white">Data Aman</p>
-            <p class="text-xs text-primary-content/50 mt-1">Enkripsi end-to-end</p>
+            <p class="text-xs text-primary-content/60 mt-1">Sistem kasir terpusat</p>
           </div>
           <div>
-            <div class="bg-white/10 rounded-lg p-3 w-fit mb-3">
-              <IconTarget class="w-5 h-5 text-secondary" />
+            <div class="bg-white/15 rounded-lg p-3 w-fit mb-3">
+              <IconReceipt class="w-5 h-5 text-secondary" />
             </div>
-            <p class="text-sm font-medium text-white">Target Keuangan</p>
-            <p class="text-xs text-primary-content/50 mt-1">Raih goal finansialmu</p>
+            <p class="text-sm font-medium text-white">Manajemen Akurat</p>
+            <p class="text-xs text-primary-content/60 mt-1">Stok dan pesanan aman</p>
           </div>
         </div>
       </div>
@@ -57,9 +58,9 @@
         <!-- Mobile Brand -->
         <div class="flex items-center gap-3 mb-10 lg:hidden">
           <div class="bg-primary rounded-lg p-2.5">
-            <IconWallet class="w-6 h-6 text-white" />
+            <IconChefHat class="w-6 h-6 text-white" />
           </div>
-          <span class="text-xl font-bold text-base-content tracking-tight">MoneyMan</span>
+          <span class="text-xl font-bold text-base-content tracking-tight">RestoMan</span>
         </div>
 
         <div class="mb-8">
@@ -141,10 +142,13 @@
 
 <script setup lang="ts">
 import {
-  IconWallet,
-  IconReportAnalytics,
+  IconChefHat,
+  IconPizza,
+  IconIceCream,
+  IconCoffee,
+  IconChartBar,
   IconShieldCheck,
-  IconTarget,
+  IconReceipt,
   IconMail,
   IconLock,
   IconEye,

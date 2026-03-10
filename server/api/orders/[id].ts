@@ -1,19 +1,22 @@
 import prisma from '../../utils/prisma'
 
 export default defineEventHandler(async (event) => {
+  const session = await requireLocation(event)
   const id = getRouterParam(event, 'id')!
   const method = event.method
 
   // GET — single order
   if (method === 'GET') {
-    const order = await prisma.order.findUnique({
-      where: { id },
+    const order = await prisma.order.findFirst({
+      where: { id, locationId: session.locationId },
       include: {
         items: { include: { product: true } },
         cashier: { select: { id: true, name: true } },
+        splitBills: { include: { items: { include: { orderItem: { include: { product: true } } } } } },
+        tableTransfers: { orderBy: { transferredAt: 'desc' } },
       },
     })
-    if (!order) throw createError({ statusCode: 404, statusMessage: 'Order tidak ditemukan' })
+    if (!order) throwError('ORD_NOT_FOUND')
     return order
   }
 
@@ -21,26 +24,31 @@ export default defineEventHandler(async (event) => {
   if (method === 'PUT') {
     const body = await readBody(event)
 
-    const existing = await prisma.order.findUnique({ where: { id } })
-    if (!existing) throw createError({ statusCode: 404, statusMessage: 'Order tidak ditemukan' })
+    const existing = await prisma.order.findFirst({
+      where: { id, locationId: session.locationId },
+    })
+    if (!existing) throwError('ORD_NOT_FOUND')
 
     // Payment
     if (body.action === 'pay') {
+      await requirePermission(event, 'pos.pay_order')
+
       if (existing.status !== 'PENDING') {
-        throw createError({ statusCode: 400, statusMessage: 'Order sudah diproses' })
+        throwError('ORD_ALREADY_PROCESSED')
       }
       const paidAmount = Number(body.paidAmount)
       const totalAmount = Number(existing.totalAmount)
-      if (paidAmount < totalAmount) {
-        throw createError({ statusCode: 400, statusMessage: 'Jumlah bayar kurang' })
+      if (body.paymentMethod === 'CASH' && paidAmount < totalAmount) {
+        throwError('ORD_INSUFFICIENT_PAYMENT')
       }
-      return prisma.order.update({
+
+      const updated = await prisma.order.update({
         where: { id },
         data: {
           status: 'COMPLETED',
           paymentMethod: body.paymentMethod || 'CASH',
           paidAmount,
-          changeAmount: paidAmount - totalAmount,
+          changeAmount: paidAmount - totalAmount > 0 ? paidAmount - totalAmount : 0,
           paidAt: new Date(),
         },
         include: {
@@ -48,12 +56,22 @@ export default defineEventHandler(async (event) => {
           cashier: { select: { id: true, name: true } },
         },
       })
+
+      await logger.info(event, 'pos', 'ORDER_PAID', `Order ${existing.orderNumber} dibayar (${body.paymentMethod})`, {
+        userId: session.userId,
+        locationId: session.locationId,
+        metadata: { orderId: id, paymentMethod: body.paymentMethod, paidAmount, totalAmount },
+      })
+
+      return updated
     }
 
     // Cancel
     if (body.action === 'cancel') {
+      await requirePermission(event, 'pos.cancel_order')
+
       if (existing.status !== 'PENDING') {
-        throw createError({ statusCode: 400, statusMessage: 'Hanya order pending yang bisa dibatalkan' })
+        throwError('ORD_ONLY_PENDING')
       }
 
       // Restore stock
@@ -70,7 +88,7 @@ export default defineEventHandler(async (event) => {
         }
       }
 
-      return prisma.order.update({
+      const updated = await prisma.order.update({
         where: { id },
         data: { status: 'CANCELLED' },
         include: {
@@ -78,8 +96,48 @@ export default defineEventHandler(async (event) => {
           cashier: { select: { id: true, name: true } },
         },
       })
+
+      await logger.info(event, 'pos', 'ORDER_CANCELLED', `Order ${existing.orderNumber} dibatalkan`, {
+        userId: session.userId,
+        locationId: session.locationId,
+        metadata: { orderId: id },
+      })
+
+      return updated
     }
 
-    throw createError({ statusCode: 400, statusMessage: 'Action tidak valid' })
+    // Reopen (Admin only)
+    if (body.action === 'reopen') {
+      await requireRole(event, 'ADMIN')
+
+      if (existing.status === 'PENDING') {
+        throwError('ORD_ALREADY_PENDING')
+      }
+
+      const updated = await prisma.order.update({
+        where: { id },
+        data: {
+          status: 'PENDING',
+          paymentMethod: null,
+          paidAmount: null,
+          changeAmount: null,
+          paidAt: null,
+        },
+        include: {
+          items: { include: { product: true } },
+          cashier: { select: { id: true, name: true } },
+        },
+      })
+
+      await logger.info(event, 'pos', 'ORDER_REOPENED', `Order ${existing.orderNumber} dibuka kembali oleh admin`, {
+        userId: session.userId,
+        locationId: session.locationId,
+        metadata: { orderId: id, previousStatus: existing.status },
+      })
+
+      return updated
+    }
+
+    throwError('ORD_INVALID_ACTION')
   }
 })

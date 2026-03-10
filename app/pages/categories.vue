@@ -27,9 +27,9 @@
         <div class="card-body p-5">
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-3">
-              <div class="w-10 h-10 rounded-lg flex items-center justify-center text-lg"
+              <div class="w-10 h-10 rounded-lg flex items-center justify-center"
                 :style="{ backgroundColor: cat.color ? cat.color + '20' : 'oklch(95% 0.005 80)' }">
-                {{ cat.icon || '📦' }}
+                <component :is="resolveIcon(cat.icon)" class="w-5 h-5" :style="{ color: cat.color || '#22c55e' }" />
               </div>
               <div>
                 <h3 class="font-bold text-sm">{{ cat.name }}</h3>
@@ -63,17 +63,27 @@
             <input v-model="form.name" type="text" class="input w-full" required placeholder="Makanan" />
           </fieldset>
 
-          <div class="grid grid-cols-2 gap-3">
-            <fieldset class="fieldset">
-              <legend class="fieldset-legend text-xs font-semibold uppercase tracking-wide">Icon (Emoji)</legend>
-              <input v-model="form.icon" type="text" class="input w-full" placeholder="🍔" />
-            </fieldset>
+          <fieldset class="fieldset">
+            <legend class="fieldset-legend text-xs font-semibold uppercase tracking-wide">Icon</legend>
+            <div class="grid grid-cols-6 gap-1.5 p-2 border border-base-300 rounded-lg max-h-48 overflow-y-auto">
+              <button
+                v-for="ico in iconOptions"
+                :key="ico.value"
+                type="button"
+                class="btn btn-sm btn-square"
+                :class="form.icon === ico.value ? 'btn-primary' : 'btn-ghost'"
+                :title="ico.label"
+                @click="form.icon = ico.value"
+              >
+                <component :is="resolveIcon(ico.value)" class="w-4 h-4" />
+              </button>
+            </div>
+          </fieldset>
 
-            <fieldset class="fieldset">
-              <legend class="fieldset-legend text-xs font-semibold uppercase tracking-wide">Warna</legend>
-              <input v-model="form.color" type="color" class="input w-full h-10 p-1" />
-            </fieldset>
-          </div>
+          <fieldset class="fieldset">
+            <legend class="fieldset-legend text-xs font-semibold uppercase tracking-wide">Warna</legend>
+            <input v-model="form.color" type="color" class="input w-full h-10 p-1" />
+          </fieldset>
 
           <div class="flex justify-end gap-2 pt-2">
             <button type="button" class="btn btn-ghost btn-sm" @click="showModal = false">Batal</button>
@@ -90,8 +100,56 @@
 </template>
 
 <script setup lang="ts">
-import { IconPlus, IconCategory, IconEdit, IconTrash, IconX } from '@tabler/icons-vue'
+import {
+  IconPlus, IconCategory, IconEdit, IconTrash, IconX,
+  IconMeat, IconFish, IconEgg, IconBread, IconSoup, IconSalad,
+  IconPizza, IconGrill, IconCoffee, IconTeapot, IconGlass, IconBottle,
+  IconBeer, IconMilk, IconIceCream, IconCake, IconCookie, IconCandy,
+  IconApple, IconCheese, IconPepper, IconBowl, IconToolsKitchen,
+  IconChefHat, IconPackage, IconStar, IconFlame, IconLeaf, IconHeart,
+} from '@tabler/icons-vue'
 import type { Category } from '~/types'
+
+const { iconOptions } = useCategoryIcons()
+
+// Map icon value strings to actual components
+const iconMap: Record<string, any> = {
+  'meat': IconMeat,
+  'fish': IconFish,
+  'egg': IconEgg,
+  'bread': IconBread,
+  'soup': IconSoup,
+  'salad': IconSalad,
+  'pizza': IconPizza,
+  'grill': IconGrill,
+  'coffee': IconCoffee,
+  'tea': IconTeapot,
+  'glass': IconGlass,
+  'bottle': IconBottle,
+  'beer': IconBeer,
+  'milk': IconMilk,
+  'ice-cream': IconIceCream,
+  'cake': IconCake,
+  'cookie': IconCookie,
+  'candy': IconCandy,
+  'fruit': IconApple,
+  'cheese': IconCheese,
+  'pepper': IconPepper,
+  'bowl': IconBowl,
+  'tools-kitchen': IconToolsKitchen,
+  'chef-hat': IconChefHat,
+  'package': IconPackage,
+  'star': IconStar,
+  'flame': IconFlame,
+  'leaf': IconLeaf,
+  'heart': IconHeart,
+  'category': IconCategory,
+}
+
+function resolveIcon(iconName: string | null | undefined) {
+  if (!iconName) return IconCategory
+  return iconMap[iconName] || IconCategory
+}
 
 const { data: categories, refresh } = useFetch<Category[]>('/api/categories')
 
@@ -99,17 +157,17 @@ const showModal = ref(false)
 const editingId = ref('')
 const saving = ref(false)
 
-const form = ref({ name: '', icon: '', color: '#22c55e' })
+const form = ref({ name: '', icon: 'category', color: '#22c55e' })
 
 function openCreateModal() {
   editingId.value = ''
-  form.value = { name: '', icon: '', color: '#22c55e' }
+  form.value = { name: '', icon: 'category', color: '#22c55e' }
   showModal.value = true
 }
 
 function editCategory(cat: Category) {
   editingId.value = cat.id
-  form.value = { name: cat.name, icon: cat.icon || '', color: cat.color || '#22c55e' }
+  form.value = { name: cat.name, icon: cat.icon || 'category', color: cat.color || '#22c55e' }
   showModal.value = true
 }
 

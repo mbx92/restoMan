@@ -1,6 +1,8 @@
 import prisma from '../../utils/prisma'
 
-export default defineEventHandler(async () => {
+export default defineEventHandler(async (event) => {
+  const session = await requireLocation(event)
+
   const today = new Date()
   const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate())
   const endOfDay = new Date(startOfDay.getTime() + 86400000)
@@ -9,7 +11,7 @@ export default defineEventHandler(async () => {
 
   // Today's completed orders
   const orders = await prisma.order.findMany({
-    where: { status: 'COMPLETED', paidAt: dateFilter },
+    where: { status: 'COMPLETED', paidAt: dateFilter, locationId: session.locationId },
     select: { totalAmount: true },
   })
   const todaySales = orders.reduce((sum, o) => sum + Number(o.totalAmount), 0)
@@ -17,7 +19,7 @@ export default defineEventHandler(async () => {
 
   // Today's expenses
   const expenses = await prisma.expense.findMany({
-    where: { date: dateFilter },
+    where: { date: dateFilter, locationId: session.locationId },
     select: { amount: true },
   })
   const todayExpenses = expenses.reduce((sum, e) => sum + Number(e.amount), 0)
