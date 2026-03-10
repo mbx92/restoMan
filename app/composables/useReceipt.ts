@@ -54,6 +54,31 @@ export const useReceipt = () => {
     })
   }
 
+  /** Word-wrap text to fit within maxWidth characters */
+  function wrapText(text: string, maxWidth: number): string[] {
+    if (text.length <= maxWidth) return [text]
+    const result: string[] = []
+    const words = text.split(' ')
+    let line = ''
+    for (const word of words) {
+      if (line.length === 0) {
+        line = word
+      } else if (line.length + 1 + word.length <= maxWidth) {
+        line += ' ' + word
+      } else {
+        result.push(line)
+        line = word
+      }
+      // If a single word is longer than maxWidth, hard-split it
+      while (line.length > maxWidth) {
+        result.push(line.substring(0, maxWidth))
+        line = line.substring(maxWidth)
+      }
+    }
+    if (line) result.push(line)
+    return result
+  }
+
   /**
    * Generate cashier receipt (struk pembayaran)
    */
@@ -69,7 +94,10 @@ export const useReceipt = () => {
 
     function pad(left: string, right: string) {
       const space = charWidth - left.length - right.length
-      return left + ' '.repeat(Math.max(1, space)) + right
+      if (space >= 1) return left + ' '.repeat(space) + right
+      // truncate left label so amount always stays on the same line
+      const maxLeft = charWidth - right.length - 1
+      return left.substring(0, maxLeft) + ' ' + right
     }
 
     function center(text: string) {
@@ -78,6 +106,7 @@ export const useReceipt = () => {
     }
 
     const lines: string[] = []
+    const is58 = paperWidth === 58
 
     // Header
     lines.push(center(info.tenantName))
@@ -87,35 +116,74 @@ export const useReceipt = () => {
     lines.push(doubleSep)
 
     // Order info
-    lines.push(pad('No:', order.orderNumber))
-    lines.push(pad('Tanggal:', formatDate(order.createdAt)))
-    lines.push(pad('Kasir:', order.cashier?.name || '-'))
-    lines.push(pad('Tipe:', order.orderType === 'DINE_IN' ? 'Dine In' : 'Takeaway'))
-    if (order.tableNumber) lines.push(pad('Meja:', order.tableNumber))
-    if (order.customerName) lines.push(pad('Pelanggan:', order.customerName))
-    if (order.customerCount) lines.push(pad('Jumlah Tamu:', String(order.customerCount)))
+    if (is58) {
+      lines.push(order.orderNumber)
+      lines.push(formatDate(order.createdAt))
+      lines.push(`Kasir: ${order.cashier?.name || '-'}`)
+      const typeName = order.orderType === 'DINE_IN' ? 'Dine In' : 'Takeaway'
+      let metaLine = typeName
+      if (order.tableNumber) metaLine += ` | Meja ${order.tableNumber}`
+      lines.push(metaLine)
+      if (order.customerName) {
+        let custLine = order.customerName
+        if (order.customerCount) custLine += ` (${order.customerCount} tamu)`
+        lines.push(custLine)
+      } else if (order.customerCount) {
+        lines.push(`Tamu: ${order.customerCount}`)
+      }
+    } else {
+      lines.push(pad('No:', order.orderNumber))
+      lines.push(pad('Tanggal:', formatDate(order.createdAt)))
+      lines.push(pad('Kasir:', order.cashier?.name || '-'))
+      lines.push(pad('Tipe:', order.orderType === 'DINE_IN' ? 'Dine In' : 'Takeaway'))
+      if (order.tableNumber) lines.push(pad('Meja:', order.tableNumber))
+      if (order.customerName) lines.push(pad('Pelanggan:', order.customerName))
+      if (order.customerCount) lines.push(pad('Jumlah Tamu:', String(order.customerCount)))
+    }
     lines.push(separator)
 
     // Items
     for (const item of order.items) {
       const name = item.product?.name || 'Item'
       const qty = `${item.quantity}x`
-      const price = `Rp ${formatCurrency(item.subtotal)}`
-      lines.push(name)
-      lines.push(pad(`  ${qty} @ Rp ${formatCurrency(item.unitPrice)}`, price))
-      if (item.notes) lines.push(`  * ${item.notes}`)
+      const sub = `Rp ${formatCurrency(item.subtotal)}`
+      for (const nameLine of wrapText(name, charWidth)) {
+        lines.push(nameLine)
+      }
+      if (is58) {
+        lines.push(pad(` ${qty} @Rp ${formatCurrency(item.unitPrice)}`, sub))
+      } else {
+        lines.push(pad(`  ${qty} @ Rp ${formatCurrency(item.unitPrice)}`, sub))
+      }
+      if (item.notes) {
+        for (const noteLine of wrapText(`  * ${item.notes}`, charWidth)) {
+          lines.push(noteLine)
+        }
+      }
     }
     lines.push(separator)
 
     // Totals
     lines.push(pad('Subtotal', `Rp ${formatCurrency(order.subtotal)}`))
     if (receiptSettings.serviceEnabled && order.serviceCharge > 0) {
-      lines.push(pad(`${receiptSettings.serviceName} (${receiptSettings.serviceRate}%)`, `Rp ${formatCurrency(order.serviceCharge)}`))
+      const svcName = receiptSettings.serviceName || 'Service'
+      const svcLabel = is58
+        ? `${svcName} ${receiptSettings.serviceRate}%`
+        : `${svcName} (${receiptSettings.serviceRate}%)`
+      lines.push(pad(svcLabel, `Rp ${formatCurrency(order.serviceCharge)}`))
     }
     if (receiptSettings.taxEnabled && order.taxAmount > 0) {
-      const taxLabel = receiptSettings.taxInclusive
-        ? `${receiptSettings.taxName} (inkl.)`
-        : `${receiptSettings.taxName} (${receiptSettings.taxRate}%)`
+      const taxName = receiptSettings.taxName || 'PPN'
+      let taxLabel: string
+      if (is58) {
+        taxLabel = receiptSettings.taxInclusive
+          ? `${taxName} inkl.`
+          : `${taxName} ${receiptSettings.taxRate}%`
+      } else {
+        taxLabel = receiptSettings.taxInclusive
+          ? `${taxName} (inkl.)`
+          : `${taxName} (${receiptSettings.taxRate}%)`
+      }
       lines.push(pad(taxLabel, `Rp ${formatCurrency(order.taxAmount)}`))
     }
     if (order.discountAmount > 0) {
@@ -127,13 +195,20 @@ export const useReceipt = () => {
     // Payment info
     if (order.paymentMethod) {
       lines.push(separator)
-      const methodLabels: Record<string, string> = {
-        CASH: 'Tunai', DEBIT: 'Debit', CREDIT_CARD: 'Kartu Kredit',
-        EWALLET: 'E-Wallet', QRIS: 'QRIS',
-      }
-      lines.push(pad('Bayar (' + (methodLabels[order.paymentMethod] || order.paymentMethod) + ')', `Rp ${formatCurrency(order.paidAmount || order.totalAmount)}`))
-      if (order.paymentMethod === 'CASH' && order.changeAmount && order.changeAmount > 0) {
-        lines.push(pad('Kembalian', `Rp ${formatCurrency(order.changeAmount)}`))
+      const methodLabels: Record<string, string> = is58
+        ? { CASH: 'Tunai', DEBIT: 'Debit', CREDIT_CARD: 'Kredit', EWALLET: 'E-Wallet', QRIS: 'QRIS' }
+        : { CASH: 'Tunai', DEBIT: 'Debit', CREDIT_CARD: 'Kartu Kredit', EWALLET: 'E-Wallet', QRIS: 'QRIS' }
+      const methodName = methodLabels[order.paymentMethod] || order.paymentMethod
+      if (is58) {
+        lines.push(pad(methodName, `Rp ${formatCurrency(order.paidAmount || order.totalAmount)}`))
+        if (order.paymentMethod === 'CASH' && order.changeAmount && order.changeAmount > 0) {
+          lines.push(pad('Kembali', `Rp ${formatCurrency(order.changeAmount)}`))
+        }
+      } else {
+        lines.push(pad(`Bayar (${methodName})`, `Rp ${formatCurrency(order.paidAmount || order.totalAmount)}`))
+        if (order.paymentMethod === 'CASH' && order.changeAmount && order.changeAmount > 0) {
+          lines.push(pad('Kembalian', `Rp ${formatCurrency(order.changeAmount)}`))
+        }
       }
     }
 
@@ -165,26 +240,46 @@ export const useReceipt = () => {
 
     function pad(left: string, right: string) {
       const space = charWidth - left.length - right.length
-      return left + ' '.repeat(Math.max(1, space)) + right
+      if (space >= 1) return left + ' '.repeat(space) + right
+      const maxLeft = charWidth - right.length - 1
+      return left.substring(0, maxLeft) + ' ' + right
     }
 
     const lines: string[] = []
+    const is58 = paperWidth === 58
     const title = printerRole === 'kitchen' ? '** ORDER DAPUR **' : '** ORDER BAR **'
 
     lines.push(center(title))
     lines.push(doubleSep)
-    lines.push(pad('No:', order.orderNumber))
-    lines.push(pad('Waktu:', formatDate(order.createdAt)))
-    if (order.tableNumber) lines.push(pad('Meja:', order.tableNumber))
-    if (order.customerName) lines.push(pad('Pelanggan:', order.customerName))
-    lines.push(pad('Tipe:', order.orderType === 'DINE_IN' ? 'Dine In' : 'Takeaway'))
+    if (is58) {
+      lines.push(order.orderNumber)
+      lines.push(formatDate(order.createdAt))
+      const typeName = order.orderType === 'DINE_IN' ? 'Dine In' : 'Takeaway'
+      let metaLine = typeName
+      if (order.tableNumber) metaLine += ` | Meja ${order.tableNumber}`
+      lines.push(metaLine)
+      if (order.customerName) lines.push(order.customerName)
+    } else {
+      lines.push(pad('No:', order.orderNumber))
+      lines.push(pad('Waktu:', formatDate(order.createdAt)))
+      if (order.tableNumber) lines.push(pad('Meja:', order.tableNumber))
+      if (order.customerName) lines.push(pad('Pelanggan:', order.customerName))
+      lines.push(pad('Tipe:', order.orderType === 'DINE_IN' ? 'Dine In' : 'Takeaway'))
+    }
     lines.push(separator)
 
     // Items — larger text for kitchen readability
     for (const item of order.items) {
       const name = item.product?.name || 'Item'
-      lines.push(`${item.quantity}x  ${name}`)
-      if (item.notes) lines.push(`     >> ${item.notes}`)
+      const itemText = `${item.quantity}x  ${name}`
+      for (const line of wrapText(itemText, charWidth)) {
+        lines.push(line)
+      }
+      if (item.notes) {
+        for (const line of wrapText(`     >> ${item.notes}`, charWidth)) {
+          lines.push(line)
+        }
+      }
     }
 
     lines.push(doubleSep)
@@ -208,7 +303,9 @@ export const useReceipt = () => {
 
     function pad(left: string, right: string) {
       const space = charWidth - left.length - right.length
-      return left + ' '.repeat(Math.max(1, space)) + right
+      if (space >= 1) return left + ' '.repeat(space) + right
+      const maxLeft = charWidth - right.length - 1
+      return left.substring(0, maxLeft) + ' ' + right
     }
 
     function center(text: string) {
@@ -217,31 +314,53 @@ export const useReceipt = () => {
     }
 
     const lines: string[] = []
+    const is58 = paperWidth === 58
 
     lines.push(center('** PRE-PRINT BILL **'))
     lines.push(center(info.tenantName))
     lines.push(center(info.locationName))
     lines.push(doubleSep)
-    lines.push(pad('No:', order.orderNumber))
-    lines.push(pad('Tanggal:', formatDate(order.createdAt)))
-    if (order.tableNumber) lines.push(pad('Meja:', order.tableNumber))
-    if (order.customerName) lines.push(pad('Pelanggan:', order.customerName))
+    if (is58) {
+      lines.push(order.orderNumber)
+      lines.push(formatDate(order.createdAt))
+      if (order.tableNumber) lines.push(`Meja: ${order.tableNumber}`)
+      if (order.customerName) lines.push(order.customerName)
+    } else {
+      lines.push(pad('No:', order.orderNumber))
+      lines.push(pad('Tanggal:', formatDate(order.createdAt)))
+      if (order.tableNumber) lines.push(pad('Meja:', order.tableNumber))
+      if (order.customerName) lines.push(pad('Pelanggan:', order.customerName))
+    }
     lines.push(separator)
 
     for (const item of order.items) {
       const name = item.product?.name || 'Item'
-      const price = `Rp ${formatCurrency(item.subtotal)}`
-      lines.push(name)
-      lines.push(pad(`  ${item.quantity}x @ Rp ${formatCurrency(item.unitPrice)}`, price))
+      const sub = `Rp ${formatCurrency(item.subtotal)}`
+      for (const nameLine of wrapText(name, charWidth)) {
+        lines.push(nameLine)
+      }
+      if (is58) {
+        lines.push(pad(` ${item.quantity}x @Rp ${formatCurrency(item.unitPrice)}`, sub))
+      } else {
+        lines.push(pad(`  ${item.quantity}x @ Rp ${formatCurrency(item.unitPrice)}`, sub))
+      }
     }
     lines.push(separator)
 
     lines.push(pad('Subtotal', `Rp ${formatCurrency(order.subtotal)}`))
     if (receiptSettings.serviceEnabled && order.serviceCharge > 0) {
-      lines.push(pad(`${receiptSettings.serviceName} (${receiptSettings.serviceRate}%)`, `Rp ${formatCurrency(order.serviceCharge)}`))
+      const svcName = receiptSettings.serviceName || 'Service'
+      const svcLabel = is58
+        ? `${svcName} ${receiptSettings.serviceRate}%`
+        : `${svcName} (${receiptSettings.serviceRate}%)`
+      lines.push(pad(svcLabel, `Rp ${formatCurrency(order.serviceCharge)}`))
     }
     if (receiptSettings.taxEnabled && order.taxAmount > 0) {
-      lines.push(pad(`${receiptSettings.taxName} (${receiptSettings.taxRate}%)`, `Rp ${formatCurrency(order.taxAmount)}`))
+      const taxName = receiptSettings.taxName || 'PPN'
+      const taxLabel = is58
+        ? `${taxName} ${receiptSettings.taxRate}%`
+        : `${taxName} (${receiptSettings.taxRate}%)`
+      lines.push(pad(taxLabel, `Rp ${formatCurrency(order.taxAmount)}`))
     }
     if (order.discountAmount > 0) {
       lines.push(pad('Diskon', `-Rp ${formatCurrency(order.discountAmount)}`))

@@ -83,7 +83,8 @@ export interface PrinterConfig {
   name: string          // label: "Kasir Utama", "Dapur", "Bar"
   role: PrinterRole     // determines what gets printed
   type: 'usb' | 'lan' | 'bluetooth'
-  address: string       // IP, USB path, or BT address
+  address: string       // IP, USB path, or serial port path (BT via SPP)
+  btDeviceName?: string // BT only: device name granted via Web Bluetooth (auto-connect, no picker)
   mode: 'esc' | 'pos'  // ESC/POS or POS mode
   paperWidth: 58 | 80   // mm
   enabled: boolean

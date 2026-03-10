@@ -99,6 +99,9 @@ function createPrinter(config: PrinterConfig): ThermalPrinter {
   if (config.type === 'lan' && !iface.startsWith('tcp://')) {
     iface = `tcp://${iface}`
   }
+  // Bluetooth via Serial Port Profile (SPP) — device already paired in OS.
+  // Address should be the serial port path: /dev/tty.DeviceName (macOS/Linux) or COM3 (Windows).
+  // node-thermal-printer writes directly to the path, no extra handling needed.
 
   return new ThermalPrinter({
     type: PrinterTypes.EPSON,

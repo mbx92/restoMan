@@ -12,7 +12,7 @@ const emit = defineEmits<{
 
 const show = defineModel<boolean>('show', { default: false })
 
-const { buildCashierReceipt, buildKitchenTicket, buildPrePrintBill, receiptToHtml, printViaBrowser } = useReceipt()
+const { buildCashierReceipt, buildKitchenTicket, buildPrePrintBill } = useReceipt()
 const { autoPrint } = useAutoPrint()
 
 const loading = ref(true)
@@ -49,6 +49,12 @@ async function fetchData() {
       printers.value = printersSetting
     }
 
+    // Auto-set paper width from cashier printer config in DB
+    const cashierPrinter = printers.value.find(p => p.enabled && p.role === 'cashier')
+    if (cashierPrinter?.paperWidth === 58 || cashierPrinter?.paperWidth === 80) {
+      previewPaper.value = cashierPrinter.paperWidth
+    }
+
     rebuildPreview()
   } catch {
     receiptText.value = 'Gagal memuat data order.'
@@ -70,29 +76,80 @@ function rebuildPreview() {
   }
 }
 
-function doPrint() {
-  const html = receiptToHtml(receiptText.value, previewPaper.value)
-  printViaBrowser(html)
-}
-
 const printing = ref(false)
 const printResult = ref<string | null>(null)
 
 async function doDirectPrint() {
   printing.value = true
   printResult.value = null
+
+  const { printTextReceipt, isSupported } = useBluetoothPrinter()
+
+  // --- Diagnostic ---
+  const btRole = previewType.value === 'kitchen' ? ['kitchen', 'bar'] : ['cashier']
+  const btPrinter = printers.value.find(
+    p => p.enabled && p.type === 'bluetooth' && btRole.includes(p.role)
+  )
+  console.log('[DirectPrint] printers:', printers.value.length,
+    printers.value.map(p => `${p.name}(${p.type}/${p.role}/enabled:${p.enabled}/btName:${p.btDeviceName})`))
+  console.log('[DirectPrint] btPrinter:', btPrinter?.name ?? 'none', '| btSupported:', isSupported)
+
+  // No printer configured at all
+  if (printers.value.length === 0) {
+    printing.value = false
+    printResult.value = '❌ Tidak ada printer dikonfigurasi. Buka Pengaturan → tambah printer Bluetooth.'
+    setTimeout(() => { printResult.value = null }, 8000)
+    return
+  }
+
+  // Bluetooth path
+  if (btPrinter) {
+    if (!isSupported) {
+      printing.value = false
+      printResult.value = '❌ Web Bluetooth tidak didukung. Gunakan Chrome Android dengan HTTPS.'
+      setTimeout(() => { printResult.value = null }, 8000)
+      return
+    }
+    try {
+      await printTextReceipt(receiptText.value, btPrinter.btDeviceName)
+      printResult.value = '✅ Berhasil dicetak!'
+    } catch (e: any) {
+      const name = e?.name ? `[${e.name}] ` : ''
+      const msg = e?.message || String(e) || 'Unknown error'
+      console.error('[DirectPrint] BT failed:', e)
+      printResult.value = `❌ ${name}${msg}`
+    } finally {
+      printing.value = false
+      setTimeout(() => { printResult.value = null }, 10000)
+    }
+    return
+  }
+
+  // No BT printer matched — but other printer types exist → server print
+  const hasNonBt = printers.value.some(p => p.enabled && p.type !== 'bluetooth')
+  if (!hasNonBt) {
+    // Only BT printers exist but role didn't match — likely role mismatch
+    const allBt = printers.value.filter(p => p.enabled && p.type === 'bluetooth')
+    const roleList = allBt.map(p => p.role).join(', ')
+    printing.value = false
+    printResult.value = `❌ Printer Bluetooth terdaftar (role: ${roleList}) tidak cocok untuk "${previewType.value}". Cek pengaturan Fungsi printer.`
+    setTimeout(() => { printResult.value = null }, 10000)
+    return
+  }
+
+  // Server-side print (LAN / USB)
   try {
-    const result = await autoPrint(props.orderId, previewType.value)
+    const result = await autoPrint(props.orderId, previewType.value, printers.value)
     if (result.success) {
       printResult.value = '✅ Berhasil dicetak!'
     } else {
       printResult.value = '⚠️ Gagal cetak — periksa koneksi printer'
     }
-  } catch {
-    printResult.value = '❌ Error — printer tidak terhubung'
+  } catch (e: any) {
+    printResult.value = `❌ ${e?.message || 'Printer tidak terhubung'}`
   } finally {
     printing.value = false
-    setTimeout(() => { printResult.value = null }, 3000)
+    setTimeout(() => { printResult.value = null }, 6000)
   }
 }
 
@@ -105,7 +162,7 @@ watch([previewType, previewPaper], () => rebuildPreview())
 
 <template>
   <dialog class="modal" :class="{ 'modal-open': show }">
-    <div class="modal-box max-w-lg p-0">
+    <div class="modal-box p-0" :class="previewPaper === 58 ? 'max-w-sm' : 'max-w-lg'">
       <!-- Header -->
       <div class="flex items-center justify-between border-b border-base-300 px-5 py-3">
         <h3 class="flex items-center gap-2 text-base font-bold">
@@ -132,11 +189,7 @@ watch([previewType, previewPaper], () => rebuildPreview())
         <button class="btn btn-sm btn-primary gap-1" :disabled="loading || !receiptText || printing" @click="doDirectPrint">
           <span v-if="printing" class="loading loading-spinner loading-xs"></span>
           <IconPrinter v-else :size="16" />
-          Direct Print
-        </button>
-        <button class="btn btn-sm btn-ghost gap-1" :disabled="loading || !receiptText" @click="doPrint">
-          <IconPrinter :size="16" />
-          Browser
+          Cetak
         </button>
       </div>
       <div v-if="printResult" class="px-5 py-2 text-sm" :class="printResult.startsWith('✅') ? 'text-success' : 'text-error'">

@@ -183,9 +183,49 @@
                   <option value="bluetooth">Bluetooth</option>
                 </select>
               </fieldset>
-              <fieldset class="fieldset">
-                <legend class="fieldset-legend text-xs font-semibold uppercase tracking-wide">Alamat / IP</legend>
-                <input type="text" class="input input-bordered input-sm w-full" v-model="printer.address" placeholder="192.168.1.100" />
+              <fieldset v-if="printer.type === 'bluetooth'" class="fieldset md:col-span-3 lg:col-span-6">
+                <legend class="fieldset-legend text-xs font-semibold uppercase tracking-wide">Bluetooth Device</legend>
+                <div class="flex items-center gap-2">
+                  <div class="flex-1 input input-bordered input-sm flex items-center gap-2 bg-base-200 cursor-default select-none">
+                    <IconBluetooth class="w-3.5 h-3.5 text-base-content/40 shrink-0" />
+                    <span v-if="printer.btDeviceName" class="text-sm truncate">{{ printer.btDeviceName }}</span>
+                    <span v-else class="text-sm text-base-content/40 italic">Belum dipasangkan</span>
+                  </div>
+                  <button
+                    class="btn btn-sm btn-outline"
+                    type="button"
+                    @click="pairBluetoothPrinter(printer)"
+                    :disabled="pairing === printer.id"
+                  >
+                    <IconBluetoothConnected v-if="printer.btDeviceName" class="w-4 h-4" />
+                    <IconBluetooth v-else class="w-4 h-4" />
+                    {{ pairing === printer.id ? 'Mencari...' : printer.btDeviceName ? 'Ganti Device' : 'Pair Printer' }}
+                  </button>
+                  <button
+                    v-if="printer.btDeviceName"
+                    class="btn btn-sm btn-ghost text-error"
+                    type="button"
+                    @click="printer.btDeviceName = undefined"
+                    title="Hapus pairing"
+                  >
+                    <IconX class="w-4 h-4" />
+                  </button>
+                </div>
+                <p class="text-xs text-base-content/50 mt-1">
+                  Klik <b>Pair Printer</b> sekali dari browser Android. Setelah itu cetak otomatis tanpa dialog pilih device.
+                </p>
+              </fieldset>
+
+              <fieldset v-if="printer.type !== 'bluetooth'" class="fieldset" :class="{ 'md:col-span-2': printer.type === 'bluetooth' }">
+                <legend class="fieldset-legend text-xs font-semibold uppercase tracking-wide">
+                  {{ printer.type === 'bluetooth' ? 'Port Serial' : 'Alamat / IP' }}
+                </legend>
+                <input
+                  type="text"
+                  class="input input-bordered input-sm w-full"
+                  v-model="printer.address"
+                  :placeholder="printer.type === 'usb' ? '/dev/usb/lp0 atau COM3' : '192.168.1.100'"
+                />
               </fieldset>
               <fieldset class="fieldset">
                 <legend class="fieldset-legend text-xs font-semibold uppercase tracking-wide">Mode</legend>
@@ -276,8 +316,30 @@
 import {
   IconDeviceFloppy, IconReceipt2, IconPercentage, IconCreditCard,
   IconHash, IconPrinter, IconShoppingCart, IconWorld, IconPlus, IconTrash,
+  IconBluetooth, IconBluetoothConnected, IconX,
 } from '@tabler/icons-vue'
 import type { PrinterConfig } from '~/types'
+
+const { pairDevice, isSupported: btSupported } = useBluetoothPrinter()
+const pairing = ref<string | null>(null)
+
+async function pairBluetoothPrinter(printer: PrinterConfig) {
+  if (!btSupported) {
+    alert('Web Bluetooth tidak didukung di browser ini. Gunakan Chrome/Edge di Android/Desktop dengan HTTPS.')
+    return
+  }
+  pairing.value = printer.id
+  try {
+    const result = await pairDevice()
+    if (result) {
+      printer.btDeviceName = result.name
+    }
+  } catch (e: any) {
+    alert('Gagal pair printer: ' + (e?.message || e))
+  } finally {
+    pairing.value = null
+  }
+}
 
 const allPaymentMethods = [
   { value: 'CASH', label: 'Cash' },

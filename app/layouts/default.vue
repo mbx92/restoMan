@@ -21,6 +21,19 @@
             </div>
           </div>
           <div class="flex-none gap-2">
+            <!-- Bluetooth Printer Connect Button -->
+            <template v-if="btSupported && hasBtPrinter">
+              <button
+                class="btn btn-sm gap-1.5"
+                :class="btConnected ? 'btn-success btn-soft' : 'btn-ghost text-base-content/60'"
+                :title="btConnected ? `Printer: ${btDeviceName}` : 'Klik untuk connect printer Bluetooth'"
+                @click="connectBtPrinter"
+              >
+                <IconBluetooth class="w-4 h-4" />
+                <span class="hidden sm:inline text-xs">{{ btConnected ? btDeviceName : 'Connect Printer' }}</span>
+              </button>
+            </template>
+
             <!-- Location Selector -->
             <div v-if="auth.user.value?.locations && auth.user.value.locations.length > 1" class="dropdown dropdown-end">
               <div tabindex="0" role="button" class="btn btn-ghost btn-sm gap-1">
@@ -206,14 +219,43 @@ import {
   IconBuildingStore, IconLayoutDashboard, IconCash, IconReceipt,
   IconPackage, IconCategory, IconReportMoney, IconCashRegister,
   IconMenu2, IconUser, IconSettings, IconLogout, IconMapPin,
-  IconUsers, IconBuilding, IconPackages, IconChartBar, IconLock
+  IconUsers, IconBuilding, IconPackages, IconChartBar, IconLock,
+  IconBluetooth,
 } from '@tabler/icons-vue'
+import type { PrinterConfig } from '~/types'
 
 const route = useRoute()
 const auth = useAuth()
 const currentYear = new Date().getFullYear()
+const { isSupported: btSupported, isConnected: btConnected, connectedDeviceName: btDeviceName, connectPrinter } = useBluetoothPrinter()
 
-onMounted(() => auth.fetchUser())
+// Load BT printer configs to know whether to show the button
+const hasBtPrinter = ref(false)
+
+async function loadPrinterConfig() {
+  if (!btSupported) return
+  try {
+    const settings = await $fetch<Record<string, string>>('/api/settings')
+    const printers: PrinterConfig[] = JSON.parse(settings['printers'] || '[]')
+    hasBtPrinter.value = printers.some(p => p.enabled && p.type === 'bluetooth')
+  } catch { /* ignore */ }
+}
+
+async function connectBtPrinter() {
+  try {
+    const settings = await $fetch<Record<string, string>>('/api/settings')
+    const printers: PrinterConfig[] = JSON.parse(settings['printers'] || '[]')
+    const btPrinter = printers.find(p => p.enabled && p.type === 'bluetooth')
+    await connectPrinter(btPrinter?.btDeviceName)
+  } catch (e: any) {
+    alert(e?.message || 'Gagal connect printer')
+  }
+}
+
+onMounted(() => {
+  auth.fetchUser()
+  loadPrinterConfig()
+})
 
 const userInitial = computed(() => {
   const name = auth.user.value?.name || 'U'

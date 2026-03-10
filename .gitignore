@@ -25,3 +25,6 @@ logs
 
 /app/generated/prisma
 .vscode/mcp.json
+
+# Local HTTPS certs (mkcert)
+.certs/

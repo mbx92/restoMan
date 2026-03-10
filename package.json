@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "build": "nuxt build",
-    "dev": "cross-env NODE_OPTIONS=\"--dns-result-order=ipv4first --max-http-header-size=65536\" nuxt dev --host 0.0.0.0",
+    "dev": "cross-env NODE_OPTIONS=\"--dns-result-order=ipv4first --max-http-header-size=65536\" NODE_TLS_REJECT_UNAUTHORIZED=0 nuxt dev --host 0.0.0.0",
     "generate": "nuxt generate",
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
