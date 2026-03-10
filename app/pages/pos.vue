@@ -243,12 +243,15 @@ function addToCart(product: Product) {
 }
 
 function increaseQty(idx: number) {
-  cart.value[idx].quantity++
+  const item = cart.value[idx]
+  if (item) item.quantity++
 }
 
 function decreaseQty(idx: number) {
-  if (cart.value[idx].quantity > 1) {
-    cart.value[idx].quantity--
+  const item = cart.value[idx]
+  if (!item) return
+  if (item.quantity > 1) {
+    item.quantity--
   } else {
     cart.value.splice(idx, 1)
   }
