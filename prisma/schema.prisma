@@ -1,5 +1,5 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
+// RestoMan POS — Prisma Schema
+// Point of Sale system for restaurant management
 
 generator client {
   provider = "prisma-client"
@@ -7,191 +7,154 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
+  provider = "postgresql"
 }
 
-// ============ Models ============
-
-model Account {
-  id        String   @id @default(cuid())
-  name      String
-  type      AccountType @default(CASH)
-  balance   Decimal  @default(0) @db.Decimal(15, 2)
-  currency  String   @default("IDR")
-  icon      String?
-  color     String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  transactions Transaction[]
-  transfersIn  Transaction[] @relation("TransferTo")
-
-  @@map("accounts")
-}
-
-model Category {
-  id        String       @id @default(cuid())
-  name      String
-  type      TransactionType
-  icon      String?
-  color     String?
-  parentId  String?
-  parent    Category?    @relation("CategoryChildren", fields: [parentId], references: [id])
-  children  Category[]   @relation("CategoryChildren")
-  createdAt DateTime     @default(now())
-  updatedAt DateTime     @updatedAt
-
-  transactions Transaction[]
-  budgets      Budget[]
-
-  @@map("categories")
-}
-
-model Transaction {
-  id          String          @id @default(cuid())
-  amount      Decimal         @db.Decimal(15, 2)
-  type        TransactionType
-  description String?
-  date        DateTime        @default(now())
-  
-  accountId   String
-  account     Account         @relation(fields: [accountId], references: [id], onDelete: Cascade)
-
-  categoryId  String
-  category    Category        @relation(fields: [categoryId], references: [id])
-
-  transferToId   String?
-  transferTo     Account?     @relation("TransferTo", fields: [transferToId], references: [id])
-
-  tags        Tag[]
-
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  @@map("transactions")
-}
-
-model Tag {
-  id           String        @id @default(cuid())
-  name         String        @unique
-  transactions Transaction[]
-
-  @@map("tags")
-}
-
-model Budget {
-  id         String       @id @default(cuid())
-  name       String
-  amount     Decimal      @db.Decimal(15, 2)
-  spent      Decimal      @default(0) @db.Decimal(15, 2)
-  period     BudgetPeriod @default(MONTHLY)
-  startDate  DateTime
-  endDate    DateTime?
-  categoryId String?
-  category   Category?    @relation(fields: [categoryId], references: [id])
-  createdAt  DateTime     @default(now())
-  updatedAt  DateTime     @updatedAt
-
-  @@map("budgets")
-}
-
-model Investment {
-  id            String         @id @default(cuid())
-  name          String
-  type          InvestmentType @default(OTHER)
-  initialAmount Decimal        @db.Decimal(15, 2)
-  currentValue  Decimal        @db.Decimal(15, 2)
-  ticker        String?
-  quantity      Decimal?       @db.Decimal(15, 6)
-  platform      String?
-  notes         String?
-  startDate     DateTime       @default(now())
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-
-  @@map("investments")
-}
-
-model Debt {
-  id            String   @id @default(cuid())
-  name          String
-  type          DebtType @default(PAYABLE)
-  totalAmount   Decimal  @db.Decimal(15, 2)
-  paidAmount    Decimal  @default(0) @db.Decimal(15, 2)
-  counterparty  String?
-  notes         String?
-  dueDate       DateTime?
-  durationMonths Int?     // Tenor dalam bulan
-  interestRate  Decimal?  @db.Decimal(5, 2) // Bunga per tahun (%)
-  installments  DebtInstallment[]
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  @@map("debts")
-}
-
-model DebtInstallment {
-  id            String   @id @default(cuid())
-  debtId        String
-  debt          Debt     @relation(fields: [debtId], references: [id], onDelete: Cascade)
-  sequence      Int      // Urutan cicilan (misal 1 dari 24)
-  amount        Decimal  @db.Decimal(15, 2)
-  dueDate       DateTime
-  isPaid        Boolean  @default(false)
-  paidAt        DateTime?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  @@map("debt_installments")
-}
+// ============ Auth & Users ============
 
 model User {
   id        String   @id @default(cuid())
   name      String
   email     String   @unique
   password  String
+  role      UserRole @default(CASHIER)
+  isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  orders    Order[]
 
   @@map("users")
 }
 
+// ============ Products ============
+
+model Category {
+  id        String    @id @default(cuid())
+  name      String
+  icon      String?
+  color     String?
+  sortOrder Int       @default(0)
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  products  Product[]
+
+  @@map("categories")
+}
+
+model Product {
+  id          String   @id @default(cuid())
+  name        String
+  sku         String?  @unique
+  description String?
+  price       Decimal  @db.Decimal(15, 2)
+  cost        Decimal  @default(0) @db.Decimal(15, 2)
+  image       String?
+  stock       Int      @default(0)
+  trackStock  Boolean  @default(false)
+  isActive    Boolean  @default(true)
+  sortOrder   Int      @default(0)
+
+  categoryId  String
+  category    Category @relation(fields: [categoryId], references: [id])
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  orderItems  OrderItem[]
+
+  @@map("products")
+}
+
+// ============ Orders / Transactions ============
+
+model Order {
+  id            String      @id @default(cuid())
+  orderNumber   String      @unique
+  status        OrderStatus @default(PENDING)
+  orderType     OrderType   @default(DINE_IN)
+  tableNumber   String?
+
+  subtotal      Decimal     @db.Decimal(15, 2)
+  discountAmount Decimal    @default(0) @db.Decimal(15, 2)
+  taxAmount     Decimal     @default(0) @db.Decimal(15, 2)
+  totalAmount   Decimal     @db.Decimal(15, 2)
+
+  paymentMethod PaymentMethod?
+  paidAmount    Decimal?    @db.Decimal(15, 2)
+  changeAmount  Decimal?    @db.Decimal(15, 2)
+  paidAt        DateTime?
+
+  notes         String?
+  customerName  String?
+
+  cashierId     String
+  cashier       User        @relation(fields: [cashierId], references: [id])
+
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  items         OrderItem[]
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id         String  @id @default(cuid())
+  quantity   Int
+  unitPrice  Decimal @db.Decimal(15, 2)
+  subtotal   Decimal @db.Decimal(15, 2)
+  notes      String?
+
+  orderId    String
+  order      Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  productId  String
+  product    Product @relation(fields: [productId], references: [id])
+
+  createdAt  DateTime @default(now())
+
+  @@map("order_items")
+}
+
+// ============ Expenses ============
+
+model Expense {
+  id          String   @id @default(cuid())
+  description String
+  amount      Decimal  @db.Decimal(15, 2)
+  category    String?
+  date        DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("expenses")
+}
+
 // ============ Enums ============
 
-enum AccountType {
+enum UserRole {
+  ADMIN
+  CASHIER
+}
+
+enum OrderStatus {
+  PENDING
+  COMPLETED
+  CANCELLED
+}
+
+enum OrderType {
+  DINE_IN
+  TAKEAWAY
+}
+
+enum PaymentMethod {
   CASH
-  BANK
-  EWALLET
+  DEBIT
   CREDIT_CARD
-  INVESTMENT
-  OTHER
-}
-
-enum TransactionType {
-  INCOME
-  EXPENSE
-  TRANSFER
-}
-
-enum BudgetPeriod {
-  DAILY
-  WEEKLY
-  MONTHLY
-  YEARLY
-}
-
-enum InvestmentType {
-  STOCK
-  MUTUAL_FUND
-  CRYPTO
-  GOLD
-  DEPOSIT
-  BOND
-  PROPERTY
-  OTHER
-}
-
-enum DebtType {
-  PAYABLE
-  RECEIVABLE
+  EWALLET
+  QRIS
 }

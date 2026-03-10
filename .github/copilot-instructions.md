@@ -1,12 +1,12 @@
-# MoneyMan – Copilot Instructions
+# RestoMan – Copilot Instructions
 
 ## Project Overview
-Personal finance manager built with **Nuxt 3** (compatibility version 4), **Prisma 7**, **DaisyUI 5**, **Tailwind CSS v4**, and **PostgreSQL**.
+Point of Sale (POS) system for restaurants built with **Nuxt 3** (compatibility version 4), **Prisma 7**, **DaisyUI 5**, **Tailwind CSS v4**, and **PostgreSQL**.
 
 ## Tech Stack
 - **Framework**: Nuxt 3.21+ with `future.compatibilityVersion: 4` — app files live in `app/` directory
 - **Styling**: Tailwind CSS v4 via `@tailwindcss/vite` plugin (no `tailwind.config.ts`). Theme configured via `@plugin "daisyui/theme"` in `app/assets/css/main.css`
-- **UI Library**: DaisyUI 5 — custom theme named `"moneyman"`, `data-theme` set on `<html>` via `useHead()`
+- **UI Library**: DaisyUI 5 — custom theme named `"restoman"`, `data-theme` set on `<html>` via `useHead()`
 - **Database ORM**: Prisma 7 with `prisma-client` generator (not `prisma-client-js`). Output: `app/generated/prisma`
 - **DB Adapter**: `@prisma/adapter-pg` — required for Prisma 7, initialized in `server/utils/prisma.ts`
 - **Icons**: `@tabler/icons-vue` — always import individually e.g. `import { IconPlus } from '@tabler/icons-vue'`
@@ -64,16 +64,33 @@ Personal finance manager built with **Nuxt 3** (compatibility version 4), **Pris
 - Call `auth.fetchUser()` in `onMounted()` in default layout
 
 ## Database Models
-- `User` — id, name, email (unique), password (bcrypt hashed)
-- `Account` — AccountType enum: CASH, BANK, EWALLET, CREDIT_CARD, INVESTMENT, OTHER
-- `Category` — TransactionType (INCOME/EXPENSE), supports parent-child hierarchy
-- `Transaction` — INCOME/EXPENSE/TRANSFER, links to Account and Category, auto-updates balance
-- `Tag` — many-to-many with Transaction
-- `Budget` — BudgetPeriod enum: DAILY, WEEKLY, MONTHLY, YEARLY
+
+### Core Models
+- `User` — id, name, email (unique), password (bcrypt hashed), role (ADMIN/CASHIER), isActive
+- `Category` — id, name, icon, color, sortOrder, isActive
+- `Product` — id, name, sku, description, price, cost, image, stock, trackStock, isActive, categoryId
+- `Order` — orderNumber (ORD-YYYYMMDD-XXXX), status (PENDING/COMPLETED/CANCELLED), orderType (DINE_IN/TAKEAWAY), tableNumber, subtotal, discountAmount, taxAmount, totalAmount, paymentMethod, paidAmount, changeAmount, paidAt, cashierId
+- `OrderItem` — quantity, unitPrice, subtotal, notes, orderId, productId
+- `Expense` — description, amount, category, date
+
+### Enums
+- `UserRole`: ADMIN, CASHIER
+- `OrderStatus`: PENDING, COMPLETED, CANCELLED
+- `OrderType`: DINE_IN, TAKEAWAY
+- `PaymentMethod`: CASH, DEBIT, CREDIT_CARD, EWALLET, QRIS
 
 ## Environment Variables (.env)
 ```
-DATABASE_URL="postgresql://user:pass@host:5432/moneyman?schema=public"
-NUXT_AUTH_EMAIL="admin@moneyman.com"   # fallback (unused after DB auth)
-NUXT_AUTH_PASSWORD="admin123"          # fallback (unused after DB auth)
+DATABASE_URL="postgresql://user:pass@host:5432/restoman?schema=public"
+NUXT_AUTH_EMAIL="admin@restoman.com"
+NUXT_AUTH_PASSWORD="admin123"
 ```
+
+## Main Pages
+- `/` — Dashboard (today's sales, orders, expenses, net income)
+- `/pos` — POS cashier interface (product grid + cart)
+- `/orders` — Order history
+- `/products` — Product management
+- `/categories` — Category management
+- `/expenses` — Expense tracking
+- `/login` — Authentication

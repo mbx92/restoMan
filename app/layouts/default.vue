@@ -15,7 +15,7 @@
           <div class="flex-1">
             <div class="text-sm breadcrumbs px-2">
               <ul>
-                <li class="text-base-content/50">MoneyMan</li>
+                <li class="text-base-content/50">RestoMan</li>
                 <li class="font-medium">{{ pageTitle }}</li>
               </ul>
             </div>
@@ -45,7 +45,7 @@
 
         <!-- Footer -->
         <footer class="footer footer-center p-4 border-t border-base-300 text-base-content/50 text-sm">
-          <p>&copy; {{ currentYear }} MoneyMan. Personal Finance Manager.</p>
+          <p>&copy; {{ currentYear }} RestoMan. Point of Sale System.</p>
         </footer>
       </div>
 
@@ -57,11 +57,11 @@
           <div class="px-6 py-5 border-b border-white/10">
             <NuxtLink to="/" class="flex items-center gap-3">
               <div class="bg-secondary rounded-lg p-2">
-                <IconWallet class="w-6 h-6 text-white" />
+                <IconBuildingStore class="w-6 h-6 text-white" />
               </div>
               <div>
-                <h1 class="text-lg font-bold tracking-tight">MoneyMan</h1>
-                <p class="text-xs text-primary-content/60">Finance Manager</p>
+                <h1 class="text-lg font-bold tracking-tight">RestoMan</h1>
+                <p class="text-xs text-primary-content/60">Point of Sale</p>
               </div>
             </NuxtLink>
           </div>
@@ -71,77 +71,43 @@
             <p class="px-3 mb-1.5 text-xs font-semibold uppercase tracking-wider text-primary-content/40">Menu Utama</p>
             <ul class="flex flex-col gap-0.5">
               <li>
-                <NuxtLink
-                  to="/"
-                  exact-active-class="bg-white/15 text-white font-semibold"
-                  class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-base text-primary-content/75 hover:bg-white/10 hover:text-white transition-colors w-full"
-                >
-                  <IconLayoutDashboard class="w-5 h-5 shrink-0" />
-                  Dashboard
+                <NuxtLink to="/" exact-active-class="bg-white/15 text-white font-semibold"
+                  class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-base text-primary-content/75 hover:bg-white/10 hover:text-white transition-colors w-full">
+                  <IconLayoutDashboard class="w-5 h-5 shrink-0" /> Dashboard
                 </NuxtLink>
               </li>
               <li>
-                <NuxtLink
-                  to="/transactions"
-                  active-class="bg-white/15 text-white font-semibold"
-                  class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-base text-primary-content/75 hover:bg-white/10 hover:text-white transition-colors w-full"
-                >
-                  <IconArrowsExchange class="w-5 h-5 shrink-0" />
-                  Transaksi
+                <NuxtLink to="/pos" active-class="bg-white/15 text-white font-semibold"
+                  class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-base text-primary-content/75 hover:bg-white/10 hover:text-white transition-colors w-full">
+                  <IconCash class="w-5 h-5 shrink-0" /> Kasir (POS)
                 </NuxtLink>
               </li>
               <li>
-                <NuxtLink
-                  to="/accounts"
-                  active-class="bg-white/15 text-white font-semibold"
-                  class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-base text-primary-content/75 hover:bg-white/10 hover:text-white transition-colors w-full"
-                >
-                  <IconBuildingBank class="w-5 h-5 shrink-0" />
-                  Akun
-                </NuxtLink>
-              </li>
-              <li>
-                <NuxtLink
-                  to="/categories"
-                  active-class="bg-white/15 text-white font-semibold"
-                  class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-base text-primary-content/75 hover:bg-white/10 hover:text-white transition-colors w-full"
-                >
-                  <IconCategory class="w-5 h-5 shrink-0" />
-                  Kategori
+                <NuxtLink to="/orders" active-class="bg-white/15 text-white font-semibold"
+                  class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-base text-primary-content/75 hover:bg-white/10 hover:text-white transition-colors w-full">
+                  <IconReceipt class="w-5 h-5 shrink-0" /> Riwayat Order
                 </NuxtLink>
               </li>
             </ul>
 
-            <p class="px-3 mb-1.5 mt-4 text-xs font-semibold uppercase tracking-wider text-primary-content/40">Keuangan</p>
+            <p class="px-3 mb-1.5 mt-4 text-xs font-semibold uppercase tracking-wider text-primary-content/40">Manajemen</p>
             <ul class="flex flex-col gap-0.5">
               <li>
-                <NuxtLink
-                  to="/investments"
-                  active-class="bg-white/15 text-white font-semibold"
-                  class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-base text-primary-content/75 hover:bg-white/10 hover:text-white transition-colors w-full"
-                >
-                  <IconChartLine class="w-5 h-5 shrink-0" />
-                  Investasi
+                <NuxtLink to="/products" active-class="bg-white/15 text-white font-semibold"
+                  class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-base text-primary-content/75 hover:bg-white/10 hover:text-white transition-colors w-full">
+                  <IconPackage class="w-5 h-5 shrink-0" /> Produk
                 </NuxtLink>
               </li>
               <li>
-                <NuxtLink
-                  to="/loans"
-                  active-class="bg-white/15 text-white font-semibold"
-                  class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-base text-primary-content/75 hover:bg-white/10 hover:text-white transition-colors w-full"
-                >
-                  <IconFileInvoice class="w-5 h-5 shrink-0" />
-                  Hutang
+                <NuxtLink to="/categories" active-class="bg-white/15 text-white font-semibold"
+                  class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-base text-primary-content/75 hover:bg-white/10 hover:text-white transition-colors w-full">
+                  <IconCategory class="w-5 h-5 shrink-0" /> Kategori
                 </NuxtLink>
               </li>
               <li>
-                <NuxtLink
-                  to="/budgets"
-                  active-class="bg-white/15 text-white font-semibold"
-                  class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-base text-primary-content/75 hover:bg-white/10 hover:text-white transition-colors w-full"
-                >
-                  <IconChartPie class="w-5 h-5 shrink-0" />
-                  Anggaran
+                <NuxtLink to="/expenses" active-class="bg-white/15 text-white font-semibold"
+                  class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-base text-primary-content/75 hover:bg-white/10 hover:text-white transition-colors w-full">
+                  <IconReportMoney class="w-5 h-5 shrink-0" /> Pengeluaran
                 </NuxtLink>
               </li>
             </ul>
@@ -170,18 +136,9 @@
 
 <script setup lang="ts">
 import {
-  IconWallet,
-  IconLayoutDashboard,
-  IconArrowsExchange,
-  IconBuildingBank,
-  IconCategory,
-  IconChartPie,
-  IconChartLine,
-  IconFileInvoice,
-  IconMenu2,
-  IconUser,
-  IconSettings,
-  IconLogout,
+  IconBuildingStore, IconLayoutDashboard, IconCash, IconReceipt,
+  IconPackage, IconCategory, IconReportMoney,
+  IconMenu2, IconUser, IconSettings, IconLogout,
 } from '@tabler/icons-vue'
 
 const route = useRoute()
@@ -193,12 +150,11 @@ onMounted(() => auth.fetchUser())
 const pageTitle = computed(() => {
   const titles: Record<string, string> = {
     '/': 'Dashboard',
-    '/transactions': 'Transaksi',
-    '/accounts': 'Akun',
+    '/pos': 'Kasir (POS)',
+    '/orders': 'Riwayat Order',
+    '/products': 'Produk',
     '/categories': 'Kategori',
-    '/investments': 'Investasi',
-    '/loans': 'Hutang',
-    '/budgets': 'Anggaran',
+    '/expenses': 'Pengeluaran',
   }
   return titles[route.path] || 'Halaman'
 })

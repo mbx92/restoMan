@@ -6,6 +6,6 @@
 
 <script setup lang="ts">
 useHead({
-  htmlAttrs: { 'data-theme': 'moneyman' },
+  htmlAttrs: { 'data-theme': 'restoman' },
 })
 </script>

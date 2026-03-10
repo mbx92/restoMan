@@ -1,102 +1,109 @@
-export interface Account {
+// ============ Auth ============
+
+export interface User {
   id: string
   name: string
-  type: string
-  balance: number
-  currency: string
-  icon?: string
-  color?: string
+  email: string
+  role: 'ADMIN' | 'CASHIER'
+  isActive: boolean
   createdAt: string
   updatedAt: string
 }
+
+// ============ Products ============
 
 export interface Category {
   id: string
   name: string
-  type: string
   icon?: string
   color?: string
-  parentId?: string
-  children?: Category[]
+  sortOrder: number
+  isActive: boolean
+  productCount?: number
   createdAt: string
   updatedAt: string
 }
 
-export interface Transaction {
+export interface Product {
   id: string
-  amount: number
-  type: string
+  name: string
+  sku?: string
   description?: string
-  date: string
-  accountId: string
-  account?: Account
+  price: number
+  cost: number
+  image?: string
+  stock: number
+  trackStock: boolean
+  isActive: boolean
+  sortOrder: number
   categoryId: string
   category?: Category
-  transferToId?: string
-  transferTo?: Account
-  tags?: Tag[]
   createdAt: string
   updatedAt: string
 }
 
-export interface Tag {
-  id: string
-  name: string
-}
+// ============ Orders ============
 
-export interface Budget {
+export interface OrderItem {
   id: string
-  name: string
-  amount: number
-  spent: number
-  period: string
-  startDate: string
-  endDate?: string
-  categoryId?: string
-  category?: Category
-  createdAt: string
-  updatedAt: string
-}
-
-export interface Investment {
-  id: string
-  name: string
-  type: string
-  initialAmount: number | string
-  currentValue: number | string
-  ticker?: string
-  quantity?: number | string | null
-  platform?: string
+  quantity: number
+  unitPrice: number
+  subtotal: number
   notes?: string
-  startDate: string
+  orderId: string
+  productId: string
+  product?: Product
   createdAt: string
-  updatedAt: string
 }
 
-export interface DebtInstallment {
+export interface Order {
   id: string
-  debtId: string
-  sequence: number
-  amount: number
-  dueDate: string
-  isPaid: boolean
-  paidAt?: string
-  createdAt: string
-  updatedAt: string
-}
-
-export interface Debt {
-  id: string
-  name: string
-  type: string
+  orderNumber: string
+  status: 'PENDING' | 'COMPLETED' | 'CANCELLED'
+  orderType: 'DINE_IN' | 'TAKEAWAY'
+  tableNumber?: string
+  subtotal: number
+  discountAmount: number
+  taxAmount: number
   totalAmount: number
-  paidAmount: number
-  counterparty?: string
+  paymentMethod?: 'CASH' | 'DEBIT' | 'CREDIT_CARD' | 'EWALLET' | 'QRIS'
+  paidAmount?: number
+  changeAmount?: number
+  paidAt?: string
   notes?: string
-  dueDate?: string
-  durationMonths?: number | null
-  interestRate?: number | null
-  installments?: DebtInstallment[]
+  customerName?: string
+  cashierId: string
+  cashier?: User
+  items: OrderItem[]
   createdAt: string
   updatedAt: string
+}
+
+// ============ Expenses ============
+
+export interface Expense {
+  id: string
+  description: string
+  amount: number
+  category?: string
+  date: string
+  createdAt: string
+  updatedAt: string
+}
+
+// ============ Cart (client-side) ============
+
+export interface CartItem {
+  product: Product
+  quantity: number
+  notes?: string
+}
+
+// ============ Dashboard ============
+
+export interface DashboardStats {
+  todaySales: number
+  todayOrders: number
+  todayExpenses: number
+  netIncome: number
 }

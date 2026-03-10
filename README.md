@@ -1,75 +1,54 @@
-# Nuxt Minimal Starter
+# RestoMan
 
-Look at the [Nuxt documentation](https://nuxt.com/docs/getting-started/introduction) to learn more.
+Point of Sale (POS) system untuk restoran, seperti Majoo, Moka, atau Olsera. Dibangun dengan Nuxt 3, Prisma 7, PostgreSQL, DaisyUI 5, dan Tailwind CSS v4.
+
+## Fitur
+
+- **Kasir (POS)** — Interface kasir dengan grid produk dan keranjang
+- **Manajemen Order** — Riwayat order, pembayaran tunai/non-tunai
+- **Produk & Kategori** — Kelola menu dengan stok tracking
+- **Pengeluaran** — Catat biaya operasional
+- **Dashboard** — Ringkasan penjualan dan laba harian
+- **Multi-user** — Login dengan role Admin/Kasir
+
+## Tech Stack
+
+- Nuxt 3.21+ (compatibilityVersion 4)
+- Prisma 7 dengan PostgreSQL
+- Tailwind CSS v4 + DaisyUI 5
+- @tabler/icons-vue
 
 ## Setup
 
-Make sure to install dependencies:
-
 ```bash
-# npm
+# Install dependencies
 npm install
 
-# pnpm
-pnpm install
+# Setup database (edit .env first)
+npx prisma migrate dev
+npx prisma generate
 
-# yarn
-yarn install
+# Seed sample data
+npm run db:seed
 
-# bun
-bun install
-```
-
-## Development Server
-
-Start the development server on `http://localhost:3000`:
-
-```bash
-# npm
+# Run development server
 npm run dev
-
-# pnpm
-pnpm dev
-
-# yarn
-yarn dev
-
-# bun
-bun run dev
 ```
 
-## Production
+## Environment (.env)
 
-Build the application for production:
+```env
+DATABASE_URL="postgresql://user:pass@localhost:5432/restoman?schema=public"
+NUXT_AUTH_EMAIL="admin@restoman.com"
+NUXT_AUTH_PASSWORD="admin123"
+```
+
+## Scripts
 
 ```bash
-# npm
-npm run build
-
-# pnpm
-pnpm build
-
-# yarn
-yarn build
-
-# bun
-bun run build
+npm run dev          # Start dev server
+npm run build        # Build for production
+npm run db:migrate   # Run migrations
+npm run db:generate  # Generate Prisma client
+npm run db:seed      # Seed database
 ```
-
-Locally preview production build:
-
-```bash
-# npm
-npm run preview
-
-# pnpm
-pnpm preview
-
-# yarn
-yarn preview
-
-# bun
-bun run preview
-```
-
-Check out the [deployment documentation](https://nuxt.com/docs/getting-started/deployment) for more information.

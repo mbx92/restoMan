@@ -2,7 +2,7 @@
 @plugin "daisyui";
 
 @plugin "daisyui/theme" {
-  name: "moneyman";
+  name: "restoman";
   default: true;
   prefersdark: false;
   color-scheme: light;
