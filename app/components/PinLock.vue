@@ -91,12 +91,20 @@ async function verifyPin() {
   try {
     await $fetch('/api/auth/verify-pin', {
       method: 'POST',
+      credentials: 'include',
       body: { pin: pin.value }
     })
     isLocked.value = false
     pin.value = ''
   } catch (err: any) {
-    errorMsg.value = err?.data?.statusMessage?.replace('[AUTH-002] ', '') || 'PIN salah'
+    const status = err?.data?.statusCode || err?.statusCode
+    const msg = err?.data?.statusMessage || ''
+    // Session is invalid — force re-login
+    if (status === 401 && !msg.includes('PIN salah')) {
+      await logout()
+      return
+    }
+    errorMsg.value = msg.replace('[AUTH-002] Sesi tidak valid, silakan login kembali: ', '').replace('[AUTH-002] ', '') || 'PIN salah'
     pin.value = ''
   } finally {
     verifying.value = false

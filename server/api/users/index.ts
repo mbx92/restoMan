@@ -55,13 +55,14 @@ export default defineEventHandler(async (event) => {
     }
 
     const hashedPassword = await bcrypt.hash(body.password, 10)
+    const hashedPin = body.pin ? await bcrypt.hash(body.pin, 10) : null
 
     const user = await prisma.user.create({
       data: {
         name: body.name,
         email: body.email,
         password: hashedPassword,
-        pin: body.pin || null,
+        pin: hashedPin,
         tenantId: session.tenantId,
         roleId,
         isActive: body.isActive !== false,

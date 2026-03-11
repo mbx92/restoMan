@@ -22,7 +22,9 @@ export default defineEventHandler(async (event) => {
       },
     })
     if (!user) throw createError({ statusCode: 404, statusMessage: 'User tidak ditemukan' })
-    return user
+    // Return hasPin boolean instead of the actual hash
+    const { pin, ...rest } = user
+    return { ...rest, hasPin: !!pin }
   }
 
   // PUT — update user (admin-only)
@@ -45,7 +47,7 @@ export default defineEventHandler(async (event) => {
     if (body.name) updateData.name = body.name
     if (body.email) updateData.email = body.email
     if (body.roleId) updateData.roleId = body.roleId
-    if (body.pin !== undefined) updateData.pin = body.pin || null
+    if (body.pin !== undefined) updateData.pin = body.pin ? await bcrypt.hash(body.pin, 10) : null
     if (body.isActive !== undefined) updateData.isActive = body.isActive
 
     // Only hash password if provided

@@ -76,6 +76,7 @@ export const useAuth = () => {
     sessionCookie.value = null
     locationCookie.value = null
     user.value = null
+    isLocked.value = false
     await navigateTo('/login')
   }
 

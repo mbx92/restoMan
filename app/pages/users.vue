@@ -101,8 +101,10 @@
             </fieldset>
 
             <fieldset class="fieldset">
-              <legend class="fieldset-legend text-xs font-semibold uppercase tracking-wide">PIN (opsional)</legend>
-              <input v-model="form.pin" type="text" class="input w-full" maxlength="6" placeholder="123456" />
+              <legend class="fieldset-legend text-xs font-semibold uppercase tracking-wide">
+                {{ editingId ? 'PIN (kosongkan jika tidak diubah)' : 'PIN (opsional)' }}
+              </legend>
+              <input v-model="form.pin" type="password" inputmode="numeric" class="input w-full" maxlength="6" placeholder="••••••" />
             </fieldset>
           </div>
 
@@ -160,7 +162,7 @@ function editUser(u: any) {
     email: u.email,
     password: '',
     roleId: u.role?.id || '',
-    pin: u.pin || '',
+    pin: '',
     isActive: u.isActive,
   }
   showModal.value = true
@@ -171,6 +173,7 @@ async function saveUser() {
   try {
     const body: any = { ...form.value }
     if (editingId.value && !body.password) delete body.password
+    if (editingId.value && !body.pin) delete body.pin
 
     if (editingId.value) {
       await $fetch(`/api/users/${editingId.value}`, { method: 'PUT', body })
