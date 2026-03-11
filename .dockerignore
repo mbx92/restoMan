@@ -1,0 +1,31 @@
+# Dependencies & build output
+node_modules
+.nuxt
+.output
+.nitro
+.cache
+dist
+
+# Environment files (set via Coolify env vars)
+.env
+.env.*
+!.env.example
+
+# Git
+.git
+.gitignore
+
+# Generated Prisma client (re-generated at build time)
+app/generated
+
+# Local HTTPS certs
+.certs
+
+# Logs & misc
+*.log
+.DS_Store
+.idea
+.vscode
+
+# Public uploads (should be a persistent volume)
+public/uploads
