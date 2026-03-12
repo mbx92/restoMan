@@ -22,7 +22,11 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 ENV HOST=0.0.0.0
-ENV PORT=3000
+
+# Override APP_PORT at build time:  docker build --build-arg APP_PORT=8080 .
+# Override PORT at runtime via Coolify env var: PORT=8080 (no rebuild needed)
+ARG APP_PORT=3000
+ENV PORT=$APP_PORT
 
 # Install all deps (includes prisma CLI from devDeps for running migrations)
 COPY package*.json ./
@@ -38,7 +42,7 @@ COPY --from=builder /app/prisma.config.ts /app/prisma.config.ts
 # Persistent volume for uploaded images (configure in Coolify: /app/.output/public/uploads)
 VOLUME ["/app/.output/public/uploads"]
 
-EXPOSE 3000
+EXPOSE $APP_PORT
 
 # Run migrations then start the app
 CMD ["sh", "-c", "npx prisma migrate deploy && node .output/server/index.mjs"]

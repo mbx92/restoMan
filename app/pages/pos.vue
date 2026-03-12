@@ -1,5 +1,16 @@
 <template>
   <div>
+    <!-- Offline Banner -->
+    <div v-if="!isOnline" class="alert alert-warning rounded-none py-2 gap-2 mb-0">
+      <IconWifiOff class="w-4 h-4 shrink-0" />
+      <span class="text-sm flex-1">Mode Offline — order akan disinkronkan otomatis saat koneksi pulih</span>
+      <span v-if="queue.length" class="badge badge-warning">{{ queue.length }} pending</span>
+    </div>
+    <div v-else-if="syncing" class="alert alert-info rounded-none py-2 gap-2 mb-0">
+      <span class="loading loading-spinner loading-xs"></span>
+      <span class="text-sm">Menyinkronkan {{ queue.length }} order offline...</span>
+    </div>
+
     <!-- Shift Gate: no open shift -->
     <div v-if="!shiftLoading && !currentShift" class="flex items-center justify-center h-[calc(100vh-10rem)]">
       <div class="text-center max-w-md">
@@ -218,17 +229,19 @@
       <dialog class="modal" :class="{ 'modal-open': showSuccess }">
         <div class="modal-box max-w-sm text-center">
           <div class="py-6 space-y-3">
-            <div class="bg-success/10 rounded-full p-4 w-16 h-16 mx-auto flex items-center justify-center">
-              <IconCheck class="w-8 h-8 text-success" />
+            <div class="rounded-full p-4 w-16 h-16 mx-auto flex items-center justify-center"
+              :class="lastOrderId ? 'bg-success/10' : 'bg-warning/10'">
+              <IconCheck v-if="lastOrderId" class="w-8 h-8 text-success" />
+              <IconWifiOff v-else class="w-8 h-8 text-warning" />
             </div>
-            <h3 class="font-bold text-lg">Order Berhasil!</h3>
+            <h3 class="font-bold text-lg">{{ lastOrderId ? 'Order Berhasil!' : 'Tersimpan Offline' }}</h3>
             <p class="text-sm text-base-content/60">{{ lastOrderNumber }}</p>
             <p v-if="lastChange !== null && lastChange > 0" class="text-lg font-bold text-success">
               Kembalian: Rp {{ formatCurrency(lastChange) }}
             </p>
           </div>
           <div class="flex gap-2">
-            <button class="btn btn-ghost flex-1 gap-1" @click="showReceipt = true">
+            <button v-if="lastOrderId" class="btn btn-ghost flex-1 gap-1" @click="showReceipt = true">
               <IconPrinter class="w-4 h-4" /> Cetak Struk
             </button>
             <button class="btn btn-primary flex-1" @click="showSuccess = false">OK</button>
@@ -285,12 +298,13 @@
 <script setup lang="ts">
 import {
   IconPackage, IconShoppingCart, IconPlus, IconMinus, IconTrash,
-  IconCash, IconX, IconCheck, IconCashRegister, IconPrinter,
+  IconCash, IconX, IconCheck, IconCashRegister, IconPrinter, IconWifiOff, IconRefresh,
 } from '@tabler/icons-vue'
 import type { Product, Category, CartItem, CashRegisterShift } from '~/types'
 
 const { formatCurrency } = useFormatCurrency()
 const { autoPrintAfterOrder } = useAutoPrint()
+const { isOnline, queue, syncing, addToQueue } = useOfflineQueue()
 
 // Shift check
 const shiftLoading = ref(true)
@@ -528,14 +542,40 @@ const lastOrderId = ref('')
 const showReceipt = ref(false)
 
 async function submitOrder() {
+  const currentOrderType = orderType.value
+
+  // ── Offline path: queue locally and sync when back online ──────────────────
+  if (!isOnline.value) {
+    addToQueue({
+      orderType: currentOrderType,
+      tableNumber: currentOrderType === 'DINE_IN' ? tableNumber.value : null,
+      customerName: customerName.value || null,
+      customerCount: customerCount.value || 1,
+      paymentMethod: paymentMethod.value,
+      paidAmount: paymentMethod.value === 'CASH' ? paidAmount.value : grandTotal.value,
+      items: cart.value.map(item => ({
+        productId: item.product.id,
+        quantity: item.quantity,
+        notes: item.notes || null,
+        variantSelections: item.variantSelections || null,
+      })),
+    })
+    lastOrderNumber.value = 'OFFLINE — Tersimpan, menunggu sinkronisasi'
+    lastChange.value = paymentMethod.value === 'CASH' ? paidAmount.value - grandTotal.value : null
+    lastOrderId.value = ''
+    showPayment.value = false
+    showSuccess.value = true
+    clearCart()
+    return
+  }
+  // ── Online path ─────────────────────────────────────────────────────────────
+
   submitting.value = true
   try {
-    const currentOrderType = orderType.value
-
     const order = await $fetch('/api/orders', {
       method: 'POST',
       body: {
-        orderType: currentOrderType,
+        orderType: currentOrderType as string,
         tableNumber: currentOrderType === 'DINE_IN' ? tableNumber.value : null,
         customerName: customerName.value || null,
         customerCount: customerCount.value || 1,
