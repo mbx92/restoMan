@@ -7,6 +7,13 @@ const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL })
 const prisma = new PrismaClient({ adapter })
 
 async function main() {
+  // Guard: skip seed if tenant already exists (idempotent for Docker restarts)
+  const existing = await prisma.tenant.findFirst()
+  if (existing) {
+    console.log('⏭ Seed skipped: data already exists')
+    return
+  }
+
   console.log('🌱 Seeding database...')
 
   // ===== Permissions =====

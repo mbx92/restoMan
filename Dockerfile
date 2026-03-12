@@ -44,5 +44,13 @@ VOLUME ["/app/.output/public/uploads"]
 
 EXPOSE $APP_PORT
 
-# Run migrations then start the app
-CMD ["sh", "-c", "npx prisma migrate deploy && node .output/server/index.mjs"]
+# Copy seed script + tsconfig (needed by tsx at runtime)
+COPY --from=builder /app/prisma/seed.ts /app/prisma/seed.ts
+COPY --from=builder /app/prisma/tsconfig.json /app/prisma/tsconfig.json
+COPY --from=builder /app/tsconfig.json /app/tsconfig.json
+COPY --from=builder /app/app/generated /app/app/generated
+COPY --from=builder /app/node_modules/.bin/tsx /app/node_modules/.bin/tsx
+COPY --from=builder /app/node_modules/tsx /app/node_modules/tsx
+
+# Run migrations, seed initial data (skipped if already seeded), then start
+CMD ["sh", "-c", "npx prisma migrate deploy && npx tsx prisma/seed.ts && node .output/server/index.mjs"]
