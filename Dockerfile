@@ -12,7 +12,8 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Generate Prisma client, then build Nuxt app
+# Generate .nuxt types first (required by prisma generate), then build
+RUN npx nuxt prepare
 RUN npx prisma generate
 RUN npm run build
 
@@ -28,12 +29,11 @@ ENV HOST=0.0.0.0
 ARG APP_PORT=3000
 ENV PORT=$APP_PORT
 
-# Install all deps (includes prisma CLI from devDeps for running migrations)
-COPY package*.json ./
-RUN npm ci
-
 # Self-contained Nitro app bundle
 COPY --from=builder /app/.output /app/.output
+
+# Prisma: copy full node_modules from builder (preserves symlinks & wasm files)
+COPY --from=builder /app/node_modules /app/node_modules
 
 # Prisma migration artifacts
 COPY --from=builder /app/prisma /app/prisma
